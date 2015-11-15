@@ -11,12 +11,12 @@ defmodule Pachinko.Printer do
 slots [ , , , ]
 . . . . .
 . . . . .
-          
+     ●    
     ●.       1|4  ball_pos: -1 , pegs: [0]            slots = %{-1: " ", 1: " "}
     .●.      2|3  ball_pos:  0 , pegs: [-1, 1]        slots = %{-2: " ", 0: " ", 2: " "}
    . .●.     3|2  ball_pos:  1 , pegs: [-2, 0, 2]     slots = %{-3: " ", -1: " ", 1: " ", 3: " "}
   . . . .●   4|1  ball_pos:  4 , pegs: [-3, -1, 1, 3]  
-├ ┼ ┼ ┼ ┼ ┤  cols = 11 / 12
+├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
 │0│0│0│0│0│   
 └─┴─┴─┴─┴─┘
 

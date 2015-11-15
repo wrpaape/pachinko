@@ -1,71 +1,66 @@
-defmodule Panchinko.Server do
+defmodule Pachinko.Server do
   @moduledoc """
   Module housing the processes that track the state of the balls
   and bucket counts
   """
-  # defp fetch!({:ok, result}), do: result
-  # defp fetch_cols, do: :io.columns |> fetch!
+  # def fetch!({:ok, result}), do: result
+  # def fetch_cols, do: :io.columns |> fetch!
   def start do
     # rows = Fetch.dim(:rows)
     # cols        = Fetch.dim(:cols)
     {:ok, cols} = :io.columns
     # num_buckets = cols / 2 |> Float.ceil |> trunc
-    num_balls = cols + 1 |> div(2) |> + 1
-    initial_state = {[], generate_buckets(num_balls)}
-
-    num_balls
+    max_pos = div(cols + 1, 2)
+    max_pos + 1
     |> generate_balls
-    |> drop(initial_state)
+    |> drop([], generate_buckets(max_pos))
   end
 
-  defp generate_buckets(max_pos) do
+  def generate_buckets(max_pos) do
     max_pos
     |> Pachinko.stagger_slots
     |> Enum.map(&{&1, 0})
     |> Enum.into(%{})
   end
 
-  defp generate_balls(num_balls), do: List.duplicate(num_balls, 0)
+  def generate_balls(num_balls), do: List.duplicate(0, num_balls)
 
-  defp append_new_ball(live_balls), do: live_balls ++ [0]
+  def append_new_ball(live_balls), do: live_balls ++ [0]
 
-  def drop({[dead_ball, live_balls], buckets}) do
+  def drop(live_balls, buckets) do
     receive do
       {printer_pid, :update_state} ->
-        shifted_balls =
+        {live_balls, [dead_ball]} =
           live_balls
-          |> append_new_ball
-          |> shift
+          |> Enum.split(-1)
 
-        updated_buckets =
+        next_balls =
+          [0 | shift(live_balls)]
+
+        next_buckets =
           buckets
           |> Map.update!(dead_ball, &(&1 + 1))
 
-        next_state = {shifted_balls, updated_buckets}
+        send(printer_pid, {:next_state, next_balls, next_buckets})
 
-        send(printer_pid, {:next_state, next_state})
-
-        drop(next_state)
+        drop(next_balls, next_buckets)
     end
   end
 
-  def drop([], state), do: drop(state)
-  def drop([live_ball, dead_balls], {live_balls, buckets}) do
+  def drop([], live_balls, buckets), do: drop(live_balls, buckets)
+  def drop([live_ball | dead_balls], live_balls, buckets) do
     receive do
       {printer_pid, :update_state} ->
-        shifted_balls =
-          [live_ball | live_balls]
-          |> shift
+        next_balls =
+          [live_ball | shift(live_balls)]
 
-        next_state = {shifted_balls, buckets}
+        send(printer_pid, {:next_state, next_balls, buckets})
 
-        send(printer_pid, {:next_state, next_state})
-
-        drop(dead_balls, next_state)
+        drop(dead_balls, next_balls, buckets)
     end
   end
 
-  defp flip_coin do
+  def flip_coin do
     rand = :rand.uniform
     cond do
       rand > 0.5 -> :heads
@@ -74,7 +69,7 @@ defmodule Panchinko.Server do
     end
   end
 
-  defp shift(balls) do
+  def shift(balls) do
     balls
     |> Enum.map(fn(pos) ->
       pos + if flip_coin == :heads, do: 1, else: -1
