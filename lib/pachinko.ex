@@ -6,6 +6,12 @@ defmodule Pachinko do
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
+    def start(_type, _args) do
+    :sequence
+    |> Application.get_env(:initial_number)
+    |> Sequence.Supervisor.start_link
+  end
+
     children = [
       # Define workers and child supervisors to be supervised
       # worker(Pachinko.Worker, [arg1, arg2, arg3]),
@@ -18,13 +24,6 @@ defmodule Pachinko do
   end
 
 
-  defp peg_row(num_pegs) do
-    -num_pegs..num_pegs
-    |> Enum.take_every(2)
-    |> Enum.map(&{&1, " "})
-    |> Enum.into(%{})
-  end
-
   defp splice_ball(peg_row, ball_pos) do
     peg_row
     |> Map.put(ball_pos, "●")
@@ -32,8 +31,10 @@ defmodule Pachinko do
     |> Enum.join(".")
   end
 
-  def stagger_slots(max_pos) do
+  def generate_slots(max_pos, token) do
     -max_pos..max_pos
     |> Enum.take_every(2)
+    |> Enum.map(&{&1, token})
+    |> Enum.into(%{})
   end
 end

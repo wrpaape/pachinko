@@ -26,26 +26,50 @@ num_rows    = num_buckets - 1
 ball_pos  = 
 len_lpad    = num_rows - row + 1
 
-slots = -num_pegs..num_pegs |> Enum.take_every(2) |> Enum.map(&{&1, " "}) |> Enum.into(%{})
+slots = num_pegs |> Pachinko.generate_slots(" ")
 slots |>  Map.put(ball_pos, "●") |> Map.values |> Enum.join(".")
 
   """
 
-  # defp new(num_pegs) do
-  #   -num_pegs..num_pegs
-  #   |> Enum.take_every(2)
-  #   |> Enum.map(&{&1, " "})
-  #   |> Enum.into(%{})
-  # end
+# {:next_state, [0, -1, -2, 1, 0, -3, 4, -1, -2, 3, -2],
+#  %{-10 => 0, -8 => 7, -6 => 54, -4 => 150, -2 => 237, 0 => 288, 2 => 245,
+#    4 => 116, 6 => 58, 8 => 13, 10 => 0}}
 
-  # defp splice_ball(peg_row, ball_pos) do
-  #   peg_row
-  #   |> Map.put(ball_pos, "●")
-  #   |> Map.values
-  #   |> Enum.join(".")
-  # end
+  def start do
+    {:ok, cols} = :io.columns
+    max_pos = div(cols + 1, 2)
+    server = spawn()
 
+    |> generate_peg_rows
+    |> ready
+  end
 
+  def generate_peg_rows(last_num_pegs) do
+    0..last_num_pegs
+    |> Enum.map(fn(num_pegs) ->
+      num_pegs |> Pachinko.generate_slots(" ")
+    end)
+  end
+
+  def ready(peg_rows) do
+    rec
+
+  end
+
+  def print_curve(distribution) do
+    
+    {full_blocks, remaining}
+
+    {:ok, rows} = :io.rows
+    rows..1
+    |> Enum.map_join("\n", fn(row) ->
+      distribution
+      |> Enum.map_join(fn(bucket_count) ->
+        row * 8 - bucket_count
+      end)
+    end)
+
+  end
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
 

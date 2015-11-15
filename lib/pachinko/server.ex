@@ -3,29 +3,29 @@ defmodule Pachinko.Server do
   Module housing the processes that track the state of the balls
   and bucket counts
   """
-  # def fetch!({:ok, result}), do: result
-  # def fetch_cols, do: :io.columns |> fetch!
-  def start do
-    # rows = Fetch.dim(:rows)
-    # cols        = Fetch.dim(:cols)
-    {:ok, cols} = :io.columns
-    # num_buckets = cols / 2 |> Float.ceil |> trunc
-    max_pos = div(cols + 1, 2)
-    max_pos + 1
-    |> generate_balls
-    |> drop([], generate_buckets(max_pos))
+  def start_link(stash_pid) do
+    {:ok, _pid} = GenServer.start_link(__MODULE__, stash_pid, name: __MODULE__)
   end
 
-  def generate_buckets(max_pos) do
-    max_pos
-    |> Pachinko.stagger_slots
-    |> Enum.map(&{&1, 0})
-    |> Enum.into(%{})
+  def start(max_pos) do
+    buckets =
+      max_pos
+      |> Pachinko.generate_slots(%{count: 0, full_blocks: 0, remainder: 0})
+
+    max_pos + 1
+    |> generate_balls
+    |> drop([], buckets)
   end
+
 
   def generate_balls(num_balls), do: List.duplicate(0, num_balls)
 
-  def append_new_ball(live_balls), do: live_balls ++ [0]
+  def inc_with_count(map, other_count) do
+    [:count, other_count]
+    |> Enum.reduce(map, fn(key, map) ->
+      Map.update!(map, key, &(&1 + 1))
+    end)
+  end
 
   def drop(live_balls, buckets) do
     receive do
@@ -39,7 +39,16 @@ defmodule Pachinko.Server do
 
         next_buckets =
           buckets
-          |> Map.update!(dead_ball, &(&1 + 1))
+          |> Map.update!(dead_ball, fn(bucket) ->
+            case bucket.remainder do
+              7 ->
+                %{bucket | remainder: 0}
+                |> inc_with_count(:full_blocks)
+              _ ->
+                bucket
+                |> inc_with_count(:remainder)
+            end
+          end)
 
         send(printer_pid, {:next_state, next_balls, next_buckets})
 
