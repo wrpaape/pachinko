@@ -1,21 +1,36 @@
-defmodule Sequence.Supervisor do
+defmodule Pachinko.Supervisor do
   use Supervisor
 
   def start_link(columns) do
-    result = {:ok, sup} = Supervisor.start_link(__MODULE__, [columns])
-    start_workers(sup, columns)
-    result
+    ok_pid =
+      {:ok, root_sup_pid} =
+      Supervisor.start_link(__MODULE__, [])
+
+    start_workers(root_sup_pid, columns)
+    ok_pid
   end
 
-  def start_workers(sup, initial_number) do
+  def start_workers(root_sup_pid, columns) do
     # Start the printer worker
-    {:ok, stash_pid} =
-      Supervisor.start_child(sup, worker(Sequence.Printer, [initial_number]))
-      # and then the subsupervisor for the actual server
-      Supervisor.start_child(sup, supervisor(Sequence.SubSupervisor, [stash_pid]))
+    printer =
+      Pachinko.Printer
+      |> worker([columns])
+
+    {:ok, printer_pid} =
+      root_sup_pid
+      |> Supervisor.start_child(printer)
+
+
+    # and then the subsupervisor for the server
+    server_sup =
+      Pachinko.Supervisor.Server
+      |> supervisor([printer_pid])
+
+    root_sup_pid
+    |> Supervisor.start_child(server_sup)
   end
 
-  def init(_) do
+  def init(_args) do
     supervise([], strategy: :one_for_one)
   end
 end

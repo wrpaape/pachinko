@@ -72,6 +72,13 @@ defmodule Pachinko.Printer do
     end)
   end
 
+  defp splice_ball(peg_row, ball_pos) do
+    peg_row
+    |> Map.put(ball_pos, "●")
+    |> Map.values
+    |> Enum.join(".")
+  end
+
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
 
   # defp pad(len), do: String.duplicate(" ", len)

@@ -1,8 +1,8 @@
-defmodule Pachinko.SubSupervisor do
+defmodule Pachinko.Supervisor.Server do
   use Supervisor
 
-  def start_link(stash_pid) do
-    {:ok, _pid} = Supervisor.start_link(__MODULE__, stash_pid)
+  def start_link(printer_pid) do
+    {:ok, _pid} = Supervisor.start_link(__MODULE__, printer_pid)
   end
 
   def init(stash_pid) do

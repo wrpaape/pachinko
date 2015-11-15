@@ -6,26 +6,10 @@ defmodule Pachinko do
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
-    children = [
-      worker(Pachinko.Worker, [arg1, arg2, arg3]),
-    ]
+    {:ok, columns} = :io.columns
 
-    # See http://elixir-lang.org/docs/stable/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Pachinko.Supervisor]
-    Supervisor.start_link(children, opts)
-
-:sequence
-    |> Application.get_env(:initial_number)
-    |> Pachinko.Supervisor.start_link
-  end
-
-
-  defp splice_ball(peg_row, ball_pos) do
-    peg_row
-    |> Map.put(ball_pos, "●")
-    |> Map.values
-    |> Enum.join(".")
+    
+    Pachinko.Supervisor.start_link(columns)
   end
 
   def generate_slots(max_pos, token) do
