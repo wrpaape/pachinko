@@ -31,18 +31,18 @@ defmodule Pachinko.Printer do
 
 #   """
 
-%{-11 => {0, 0, 0}, -9 => {0, 5, 1}, -7 => {1, 10, 5}, -5 => {3, 12, 7},
-   -3 => {0, 20, 0}, -1 => {5, 30, 5}, 1 => {8, 27, 3}, 3 => {8, 35, 3},
-   5 => {5, 11, 7}, 7 => {1, 1, 1}, 9 => {0, 0, 0}, 11 => {0, 6, 1}}
+# %{-11 => {0, 0, 0}, -9 => {0, 5, 1}, -7 => {1, 10, 5}, -5 => {3, 12, 7},
+#    -3 => {0, 20, 0}, -1 => {5, 30, 5}, 1 => {8, 27, 3}, 3 => {8, 35, 3},
+#    5 => {5, 11, 7}, 7 => {1, 1, 1}, 9 => {0, 0, 0}, 11 => {0, 6, 1}}
 
-  # def start do
-  #   {:ok, cols} = :io.columns
-  #   max_pos = div(cols + 1, 2)
-  #   server = spawn()
+  def start do
+    {:ok, cols} = :io.columns
+    max_pos = div(cols + 1, 2)
+    server = spawn()
 
-  #   |> generate_peg_rows
-  #   |> ready
-  # end
+    |> generate_peg_rows
+    |> ready
+  end
 
   def generate_peg_rows(last_num_pegs) do
     0..last_num_pegs
@@ -55,24 +55,21 @@ defmodule Pachinko.Printer do
   end
 
   def build_curve(buckets) do
-    # {full_blocks, remaining}
-
     {:ok, rows} = :io.rows
     rows..1
     |> Enum.map_join("\n", &curve_row(&1, buckets))
   end
 
   def curve_row(row, buckets) do
-    {:ok, cols} = :io.columns
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do
         full_blocks < row -> " "
         full_blocks > row -> "█"
+        remainder == 0    -> " "
         true              -> [9600 + remainder]
       end
     end)
-    |> String.ljust(cols)
   end
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
