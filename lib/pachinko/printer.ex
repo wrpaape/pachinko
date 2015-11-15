@@ -2,47 +2,47 @@ defmodule Pachinko.Printer do
   @moduledoc """
   Prints Pachinko state to stdio.
   """
-  """
-  ◬│●
-  ▁▂▃▄▅▆▇█
-           ●
+#   """
+#   ◬│●
+#   ▁▂▃▄▅▆▇█
+#            ●
 
-[, ,.]
-slots [ , , , ]
-. . . . .
-. . . . .
-     ●    
-    ●.       1|4  ball_pos: -1 , pegs: [0]            slots = %{-1: " ", 1: " "}
-    .●.      2|3  ball_pos:  0 , pegs: [-1, 1]        slots = %{-2: " ", 0: " ", 2: " "}
-   . .●.     3|2  ball_pos:  1 , pegs: [-2, 0, 2]     slots = %{-3: " ", -1: " ", 1: " ", 3: " "}
-  . . . .●   4|1  ball_pos:  4 , pegs: [-3, -1, 1, 3]  
-├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
-│0│0│0│0│0│   
-└─┴─┴─┴─┴─┘
+# [, ,.]
+# slots [ , , , ]
+# . . . . .
+# . . . . .
+#      ●    
+#     ●.       1|4  ball_pos: -1 , pegs: [0]            slots = %{-1: " ", 1: " "}
+#     .●.      2|3  ball_pos:  0 , pegs: [-1, 1]        slots = %{-2: " ", 0: " ", 2: " "}
+#    . .●.     3|2  ball_pos:  1 , pegs: [-2, 0, 2]     slots = %{-3: " ", -1: " ", 1: " ", 3: " "}
+#   . . . .●   4|1  ball_pos:  4 , pegs: [-3, -1, 1, 3]  
+# ├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
+# │0│0│0│0│0│   
+# └─┴─┴─┴─┴─┘
 
-cols        = Fetch.dim(:cols)
-num_buckets = cols / 2 |> Float.ceil |> trunc
-num_rows    = num_buckets - 1
-ball_pos  = 
-len_lpad    = num_rows - row + 1
+# cols        = Fetch.dim(:cols)
+# num_buckets = cols / 2 |> Float.ceil |> trunc
+# num_rows    = num_buckets - 1
+# ball_pos  = 
+# len_lpad    = num_rows - row + 1
 
-slots = num_pegs |> Pachinko.generate_slots(" ")
-slots |>  Map.put(ball_pos, "●") |> Map.values |> Enum.join(".")
+# slots = num_pegs |> Pachinko.generate_slots(" ")
+# slots |>  Map.put(ball_pos, "●") |> Map.values |> Enum.join(".")
 
-  """
+#   """
 
-# {:next_state, [0, -1, -2, 1, 0, -3, 4, -1, -2, 3, -2],
-#  %{-10 => 0, -8 => 7, -6 => 54, -4 => 150, -2 => 237, 0 => 288, 2 => 245,
-#    4 => 116, 6 => 58, 8 => 13, 10 => 0}}
+%{-11 => {0, 0, 0}, -9 => {0, 5, 1}, -7 => {1, 10, 5}, -5 => {3, 12, 7},
+   -3 => {0, 20, 0}, -1 => {5, 30, 5}, 1 => {8, 27, 3}, 3 => {8, 35, 3},
+   5 => {5, 11, 7}, 7 => {1, 1, 1}, 9 => {0, 0, 0}, 11 => {0, 6, 1}}
 
-  def start do
-    {:ok, cols} = :io.columns
-    max_pos = div(cols + 1, 2)
-    server = spawn()
+  # def start do
+  #   {:ok, cols} = :io.columns
+  #   max_pos = div(cols + 1, 2)
+  #   server = spawn()
 
-    |> generate_peg_rows
-    |> ready
-  end
+  #   |> generate_peg_rows
+  #   |> ready
+  # end
 
   def generate_peg_rows(last_num_pegs) do
     0..last_num_pegs
@@ -52,23 +52,27 @@ slots |>  Map.put(ball_pos, "●") |> Map.values |> Enum.join(".")
   end
 
   def ready(peg_rows) do
-    rec
-
   end
 
-  def print_curve(distribution) do
-    
-    {full_blocks, remaining}
+  def build_curve(buckets) do
+    # {full_blocks, remaining}
 
     {:ok, rows} = :io.rows
     rows..1
-    |> Enum.map_join("\n", fn(row) ->
-      distribution
-      |> Enum.map_join(fn(bucket_count) ->
-        row * 8 - bucket_count
-      end)
-    end)
+    |> Enum.map_join("\n", &curve_row(&1, buckets))
+  end
 
+  def curve_row(row, buckets) do
+    {:ok, cols} = :io.columns
+    buckets
+    |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
+      cond do
+        full_blocks < row -> " "
+        full_blocks > row -> "█"
+        true              -> [9600 + remainder]
+      end
+    end)
+    |> String.ljust(cols)
   end
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string

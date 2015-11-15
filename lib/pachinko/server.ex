@@ -10,7 +10,7 @@ defmodule Pachinko.Server do
   def start(max_pos) do
     buckets =
       max_pos
-      |> Pachinko.generate_slots(%{count: 0, full_blocks: 0, remainder: 0})
+      |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
 
     max_pos + 1
     |> generate_balls
@@ -19,13 +19,6 @@ defmodule Pachinko.Server do
 
 
   def generate_balls(num_balls), do: List.duplicate(0, num_balls)
-
-  def inc_with_count(map, other_count) do
-    [:count, other_count]
-    |> Enum.reduce(map, fn(key, map) ->
-      Map.update!(map, key, &(&1 + 1))
-    end)
-  end
 
   def drop(live_balls, buckets) do
     receive do
@@ -39,14 +32,10 @@ defmodule Pachinko.Server do
 
         next_buckets =
           buckets
-          |> Map.update!(dead_ball, fn(bucket) ->
-            case bucket.remainder do
-              7 ->
-                %{bucket | remainder: 0}
-                |> inc_with_count(:full_blocks)
-              _ ->
-                bucket
-                |> inc_with_count(:remainder)
+          |> Map.update!(dead_ball, fn({count, full_blocks, remainder}) ->
+            case remainder do
+              7 -> {count + 1, full_blocks + 1, 0}
+              _ -> {count + 1, full_blocks, remainder + 1}
             end
           end)
 

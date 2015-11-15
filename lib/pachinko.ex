@@ -6,12 +6,6 @@ defmodule Pachinko do
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
-    def start(_type, _args) do
-    :sequence
-    |> Application.get_env(:initial_number)
-    |> Sequence.Supervisor.start_link
-  end
-
     children = [
       # Define workers and child supervisors to be supervised
       # worker(Pachinko.Worker, [arg1, arg2, arg3]),
