@@ -1,9 +1,3 @@
-defmodule Fetch do
-  defp fetch!({:ok, result}), do: result
-  def dim(dim), do: apply(:io, dim, []) |> fetch! |> - 1
-end
-
-
 defmodule Pachinko.Printer do
   @moduledoc """
   Prints Pachinko state to stdio.
@@ -18,10 +12,10 @@ slots [ , , , ]
 . . . . .
 . . . . .
           
-    ●.       1|4  ball_state: -1 , pegs: [0]            slots = %{-1: " ", 1: " "}
-    .●.      2|3  ball_state:  0 , pegs: [-1, 1]        slots = %{-2: " ", 0: " ", 2: " "}
-   . .●.     3|2  ball_state:  1 , pegs: [-2, 0, 2]     slots = %{-3: " ", -1: " ", 1: " ", 3: " "}
-  . . . .●   4|1  ball_state:  4 , pegs: [-3, -1, 1, 3]  
+    ●.       1|4  ball_pos: -1 , pegs: [0]            slots = %{-1: " ", 1: " "}
+    .●.      2|3  ball_pos:  0 , pegs: [-1, 1]        slots = %{-2: " ", 0: " ", 2: " "}
+   . .●.     3|2  ball_pos:  1 , pegs: [-2, 0, 2]     slots = %{-3: " ", -1: " ", 1: " ", 3: " "}
+  . . . .●   4|1  ball_pos:  4 , pegs: [-3, -1, 1, 3]  
 ├ ┼ ┼ ┼ ┼ ┤  cols = 11 / 12
 │0│0│0│0│0│   
 └─┴─┴─┴─┴─┘
@@ -29,12 +23,17 @@ slots [ , , , ]
 cols        = Fetch.dim(:cols)
 num_buckets = cols / 2 |> Float.ceil |> trunc
 num_rows    = num_buckets - 1
-ball_state  = 
+ball_pos  = 
 len_lpad    = num_rows - row + 1
 
 slots = -num_pegs..num_pegs |> Enum.take_every(2) |> Enum.map(&{&1, " "}) |> Enum.into(%{})
-slots |>  Map.put(ball_state, "●") |> Map.values |> Enum.join(".")
+slots |>  Map.put(ball_pos, "●") |> Map.values |> Enum.join(".")
+
   """
+
+
+
+
 
   defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
 

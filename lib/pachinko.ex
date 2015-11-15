@@ -16,4 +16,19 @@ defmodule Pachinko do
     opts = [strategy: :one_for_one, name: Pachinko.Supervisor]
     Supervisor.start_link(children, opts)
   end
+
+
+  defp peg_row(num_pegs) do
+    -num_pegs..num_pegs
+    |> Enum.take_every(2)
+    |> Enum.map(&{&1, " "})
+    |> Enum.into(%{})
+  end
+
+  defp splice_ball(peg_row, ball_pos) do
+    peg_row
+    |> Map.put(ball_pos, "●")
+    |> Map.values
+    |> Enum.join(".")
+  end
 end
