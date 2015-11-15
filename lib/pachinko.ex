@@ -31,4 +31,9 @@ defmodule Pachinko do
     |> Map.values
     |> Enum.join(".")
   end
+
+  def stagger_slots(max_pos) do
+    -max_pos..max_pos
+    |> Enum.take_every(2)
+  end
 end
