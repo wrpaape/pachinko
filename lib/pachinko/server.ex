@@ -24,7 +24,6 @@ defmodule Pachinko.Server do
   def init(max_ball_spread) do
     empty_buckets =
       max_ball_spread
-      |> IO.inspect
       |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
 
     dead_balls =

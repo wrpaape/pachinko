@@ -1,5 +1,5 @@
 defmodule Pachinko.Printer do
-  @frame_interval 1_000 / 60
+  @frame_interval 17
 
   use GenServer
 
@@ -43,19 +43,21 @@ defmodule Pachinko.Printer do
   # External API
 
   def start_link(max_ball_spread, server_pid) do
-    {:ok, _printer_pid} =
-      __MODULE__
-      |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
+    ok_printer_pid =
+      {:ok, printer_pid} =
+        __MODULE__
+        |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
     
-    # {:ok, {:interval, _ref}} = 
-      # @frame_interval
-      # |> IO.inspect
-      # |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
+    {:ok, {:interval, _ref}} = 
+      @frame_interval
+      |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
+
+    ok_printer_pid
   end
 
   # GenServer implementation
 
-  def init(max_ball_spread, server_pid) do
+  def init([max_ball_spread, server_pid]) do
     peg_rows =
       max_ball_spread
       |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
@@ -65,8 +67,11 @@ defmodule Pachinko.Printer do
     {:ok, initial_state}
   end
 
+
   def handle_cast(:print, {peg_rows, server_pid}) do
     IO.puts "LOL"
+    
+    {:noreply, {peg_rows, server_pid}}
   end
 
   # helper functions
