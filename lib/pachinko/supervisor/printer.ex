@@ -24,7 +24,7 @@ defmodule Pachinko.Supervisor.Printer do
   end
 
 
-  def init(max_ball_spread, server_pid) do
-    supervise([], strategy: :simple_one_for_one)
+  def init(_) do
+    supervise([], strategy: :one_for_one)
   end
 end

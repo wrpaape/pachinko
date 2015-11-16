@@ -14,8 +14,11 @@ defmodule Pachinko.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger],
-     mod: {Pachinko, []}]
+    [
+      applications: [:logger],
+      mod: {Pachinko, []},
+      registered: [Pachinko.Server, Pachinko.Printer]
+    ]
   end
 
   # Dependencies can be Hex packages:

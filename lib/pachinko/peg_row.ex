@@ -1,4 +1,4 @@
-defmodule Pachink.PegRow do
+defmodule Pachinko.PegRow do
   @moduledoc """
   Module from which
   """

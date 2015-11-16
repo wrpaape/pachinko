@@ -11,7 +11,7 @@ defmodule Pachinko.Server do
   def start_link(max_ball_spread) do
     {:ok, _server_pid} =
     __MODULE__
-    |> GenServer.start_link([max_ball_spread], name: __MODULE__)
+    |> GenServer.start_link(max_ball_spread, name: __MODULE__)
   end
 
   def update_state do
@@ -24,6 +24,7 @@ defmodule Pachinko.Server do
   def init(max_ball_spread) do
     empty_buckets =
       max_ball_spread
+      |> IO.inspect
       |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
 
     dead_balls =

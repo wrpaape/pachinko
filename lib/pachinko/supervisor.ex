@@ -18,7 +18,7 @@ defmodule Pachinko.Supervisor do
     server =
       Pachinko.Server
       |> supervisor([max_ball_spread])
-    
+
     {:ok, server_pid} =
       sup_pid
       |> Supervisor.start_child(server)
