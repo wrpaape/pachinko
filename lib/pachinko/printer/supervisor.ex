@@ -1,4 +1,4 @@
-defmodule Pachinko.Supervisor.Printer do
+defmodule Pachinko.Printer.Supervisor do
   use Supervisor
 
   def start_link(max_ball_spread, server_pid) do

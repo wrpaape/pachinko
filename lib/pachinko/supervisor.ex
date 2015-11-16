@@ -23,7 +23,7 @@ defmodule Pachinko.Supervisor do
 
     # and then the subsupervisor for the printer
     printer_sup =
-      Pachinko.Supervisor.Printer
+      Pachinko.Printer.Supervisor
       |> worker([max_ball_spread, server_pid])
 
     {:ok, _printer_sup_pid} =
