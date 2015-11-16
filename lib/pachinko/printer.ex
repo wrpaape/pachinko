@@ -1,5 +1,5 @@
 defmodule Pachinko.Printer do
-  @frame_interval 17 # capped at ~60 fps
+  @frame_interval 1700 # capped at ~60 fps
 
   use GenServer
 
@@ -73,7 +73,7 @@ defmodule Pachinko.Printer do
 
   def handle_cast(:print, state) do
     Pachinko.Server.update
-    # |> print(state)
+    |> print(state)
 
     {:noreply, state}    
   end
@@ -88,11 +88,27 @@ defmodule Pachinko.Printer do
     # buckets
     # |> build_bell_curve
     # |> IO.puts
-    # IO.puts "alive"
+
+    peg_rows
+    |> Enum.zip(live_balls)
+    |> build_pachinko
+    |> IO.puts
   end
 
   def print({dead_balls, live_balls, buckets}, {peg_rows, server_pid}) do
     # IO.puts "dead"
+
+    peg_rows
+    |> Enum.zip(live_balls)
+    |> build_pachinko
+    |> IO.puts
+
+    # dead_rows =
+    #   build_pachinko
+    #   |> build
+    # peg_rows
+    # |> build_pachinko(live_balls)
+    # |> List.concat()
   end
 
   def generate_peg_rows(last_num_pegs) do
@@ -103,11 +119,10 @@ defmodule Pachinko.Printer do
     end)
   end
 
-  # def build_pachinko(peg_rows, balls) do
-  #   peg_rows
-  #   |>
-  #   |> Enum.map_join("\n", &pachinko_row(&1, ))
-  # end
+  def build_pachinko(rows) do
+    rows
+    |> Enum.map_join("\n", &pachinko_row(&1))
+  end
 
   def build_bell_curve(buckets) do
     {:ok, rows} = :io.rows
@@ -133,18 +148,24 @@ defmodule Pachinko.Printer do
   the resulting display string to the print process.
 
   ## Example
-      iex> import Pachinko.Printer, only: [splice_ball: 2]
+      iex> import Pachinko.Printer, only: [pachinko_row: 2]
       ...> peg_row = Pachinko.generate_slots(2, " ")
-      ...> splice_ball(peg_row, -2)
+      ...> pachinko_row(peg_row, -2)
       "●. . "
 
       ...> peg_row = Pachinko.generate_slots(5, " ")
-      ...> splice_ball(peg_row, 1)
+      ...> pachinko_row(peg_row, 1)
       " . . . .●. . " 
   """
-  def splice_ball(peg_row, ball_pos) do
+  def pachinko_row({peg_row, ball_pos}) do
     peg_row
     |> Map.put(ball_pos, "●")
+    |> Map.values
+    |> Enum.join(".")
+  end
+
+  def pachinko_row(peg_row) do
+    peg_row
     |> Map.values
     |> Enum.join(".")
   end
