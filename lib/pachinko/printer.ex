@@ -1,5 +1,5 @@
 defmodule Pachinko.Printer do
-  @frame_interval 17
+  @frame_interval 17 # capped at ~60 fps
 
   use GenServer
 
@@ -7,9 +7,9 @@ defmodule Pachinko.Printer do
   Prints Pachinko state to stdio.
   """
 #   """
-#   ◬│●
+#   │●
 #   ▁▂▃▄▅▆▇█
-#            ●
+#   ●
 
 # [, ,.]
 # slots [ , , , ]
@@ -32,7 +32,6 @@ defmodule Pachinko.Printer do
 
 # slots = num_pegs |> Pachinko.generate_slots(" ")
 # slots |>  Map.put(ball_pos, "●") |> Map.values |> Enum.join(".")
-
 #   """
 
 # %{-11 => {0, 0, 0}, -9 => {0, 5, 1}, -7 => {1, 10, 5}, -5 => {3, 12, 7},
@@ -67,10 +66,9 @@ defmodule Pachinko.Printer do
     {:ok, initial_state}
   end
 
-
   def handle_cast(:print, {peg_rows, server_pid}) do
     IO.puts "LOL"
-    
+
     {:noreply, {peg_rows, server_pid}}
   end
 
@@ -102,6 +100,16 @@ defmodule Pachinko.Printer do
     end)
   end
 
+ @doc """
+  Receives ball_pos and splices a ball token (●)
+  into a row of peg tokens (.) accordingly:
+
+  {:ball, -2} => "●. . "
+  {:ball,  1} => " . . .●. . "
+
+  before dispatching the resulting display string
+  to the printer process.
+  """
   defp splice_ball(peg_row, ball_pos) do
     peg_row
     |> Map.put(ball_pos, "●")
