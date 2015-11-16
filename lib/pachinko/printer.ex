@@ -47,9 +47,10 @@ defmodule Pachinko.Printer do
       __MODULE__
       |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
     
-    {:ok, {:interval, _ref}} = 
-      @frame_interval
-      |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
+    # {:ok, {:interval, _ref}} = 
+      # @frame_interval
+      # |> IO.inspect
+      # |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
   end
 
   # GenServer implementation
