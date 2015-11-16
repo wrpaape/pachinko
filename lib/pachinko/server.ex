@@ -6,7 +6,9 @@ defmodule Pachinko.Server do
   and bucket counts
   """
 
-  # External API
+  ########################################################################
+  #                             external API                             #
+  ########################################################################
 
   def start_link(max_ball_spread) do
     {:ok, _server_pid} =
@@ -18,12 +20,9 @@ defmodule Pachinko.Server do
 
   def update, do: call(:update)
 
-  # GenServer implementation
-
-  defp call(msg) do
-    __MODULE__
-    |> GenServer.call(msg)
-  end
+  ########################################################################
+  #                       GenServer implementation                       #
+  ########################################################################
 
   def init(max_ball_spread) do
     empty_buckets =
@@ -79,7 +78,14 @@ defmodule Pachinko.Server do
 
   def handle_call(:state, _from, state), do: reply_state(state)
 
-  # helper functions
+  ######################################################################
+  #                          private helpers                           #
+  ######################################################################
+
+  defp call(msg) do
+    __MODULE__
+    |> GenServer.call(msg)
+  end
 
   # do not include dead_balls in reply
   defp reply_state({live_balls, buckets}), do: {:reply, {live_balls, buckets}, {live_balls, buckets}}

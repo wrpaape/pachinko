@@ -39,11 +39,13 @@ defmodule Pachinko.Printer do
 #    5 => {5, 11, 7}, 7 => {1, 1, 1}, 9 => {0, 0, 0}, 11 => {0, 6, 1}}
 
 
-  # External API
+  ########################################################################
+  #                             external API                             #
+  ########################################################################
 
   def start_link(max_ball_spread, server_pid) do
     ok_printer_pid =
-      {:ok, printer_pid} =
+      {:ok, _printer_pid} =
         __MODULE__
         |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
     
@@ -54,12 +56,16 @@ defmodule Pachinko.Printer do
     ok_printer_pid
   end
 
-  # GenServer implementation
+  def state, do: GenServer.call(__MODULE__, :state)
+
+  ########################################################################
+  #                       GenServer implementation                       #
+  ########################################################################
 
   def init([max_ball_spread, server_pid]) do
     peg_rows =
       max_ball_spread
-      |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
+      |> generate_peg_rows
 
     initial_state = {peg_rows, server_pid}
 
@@ -72,9 +78,13 @@ defmodule Pachinko.Printer do
     {:noreply, {peg_rows, server_pid}}
   end
 
-  # helper functions
+  def handle_call(:state, _from, state), do: {:reply, state, state}
 
-  defp generate_peg_rows(last_num_pegs) do
+  ######################################################################
+  #                           public helpers                           #
+  ######################################################################
+
+  def generate_peg_rows(last_num_pegs) do
     0..last_num_pegs
     |> Enum.map(fn(num_pegs) ->
       num_pegs
@@ -82,13 +92,13 @@ defmodule Pachinko.Printer do
     end)
   end
 
-  defp build_curve(buckets) do
+  def build_curve(buckets) do
     {:ok, rows} = :io.rows
     rows..1
     |> Enum.map_join("\n", &curve_row(&1, buckets))
   end
 
-  defp curve_row(row, buckets) do
+  def curve_row(row, buckets) do
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do
@@ -100,17 +110,25 @@ defmodule Pachinko.Printer do
     end)
   end
 
- @doc """
+  # %{-2 => " ", 0 => " ", 2 => " "}
+  # %{-5 => " ", -3 => " ", -1 => " ", 1=> " ", 3 => " " , 5 => " "}
+
+  @doc """
   Receives ball_pos and splices a ball token (●)
-  into a row of peg tokens (.) accordingly:
+  into a row of peg tokens (.) before dispatching
+  the resulting display string to the print process.
 
-  {:ball, -2} => "●. . "
-  {:ball,  1} => " . . .●. . "
+  ## Example
+      iex> import Pachinko.Printer, only: [splice_ball: 2]
+      ...> peg_row = Pachinko.generate_slots(2, " ")
+      ...> splice_ball(peg_row, -2)
+      "●. . "
 
-  before dispatching the resulting display string
-  to the printer process.
+      ...> peg_row = Pachinko.generate_slots(5, " ")
+      ...> splice_ball(peg_row, 1)
+      " . . . .●. . " 
   """
-  defp splice_ball(peg_row, ball_pos) do
+  def splice_ball(peg_row, ball_pos) do
     peg_row
     |> Map.put(ball_pos, "●")
     |> Map.values
