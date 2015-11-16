@@ -1,4 +1,6 @@
 defmodule Pachinko.Printer do
+  @frame_interval 60 / 1_000
+
   @moduledoc """
   Prints Pachinko state to stdio.
   """
@@ -35,13 +37,28 @@ defmodule Pachinko.Printer do
 #    -3 => {0, 20, 0}, -1 => {5, 30, 5}, 1 => {8, 27, 3}, 3 => {8, 35, 3},
 #    5 => {5, 11, 7}, 7 => {1, 1, 1}, 9 => {0, 0, 0}, 11 => {0, 6, 1}}
 
-  def start do
-    {:ok, cols} = :io.columns
-    max_pos = div(cols + 1, 2)
-    server = spawn()
+  :timer.send_interval(@interval, ticker_pid, {:tick})
 
+  # External API
+
+  def start_link(max_ball_spread) do
+    max_ball_spread
     |> generate_peg_rows
     |> ready
+  end
+
+
+  # GenServer implementation
+
+  def init(printer_pid, max_pos) do
+    buckets =
+      max_pos
+      |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
+
+    max_pos + 1
+    |> generate_balls
+
+    # |> drop([], buckets, printer_pid)
   end
 
   def generate_peg_rows(last_num_pegs) do

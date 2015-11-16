@@ -1,36 +1,48 @@
 defmodule Pachinko.Supervisor do
   use Supervisor
 
-  def start_link(columns) do
-    ok_pid =
-      {:ok, root_sup_pid} =
-      Supervisor.start_link(__MODULE__, [])
+  def start_link do
+    ok_sup_pid =
+      {:ok, sup_pid} =
+        __MODULE__
+        |> Supervisor.start_link([])
 
-    start_workers(root_sup_pid, columns)
-    ok_pid
+    start_workers(sup_pid)
+    ok_sup_pid
   end
 
-  def start_workers(root_sup_pid, columns) do
-    # Start the printer worker
-    printer =
-      Pachinko.Printer
-      |> worker([columns])
+  def start_workers(sup_pid) do
+    max_ball_spread = fetch_max_ball_spread!
 
-    {:ok, printer_pid} =
-      root_sup_pid
-      |> Supervisor.start_child(printer)
-
-
-    # and then the subsupervisor for the server
+    # Start the server
     server_sup =
-      Pachinko.Supervisor.Server
-      |> supervisor([printer_pid])
+      Pachinko.Server
+      |> supervisor([max_ball_spread])
+    
+    {:ok, server_pid} =
+      sup_pid
+      |> Supervisor.start_child(server_sup)
 
-    root_sup_pid
-    |> Supervisor.start_child(server_sup)
+    # and then the subsupervisor for the printer
+    printer =
+      Pachinko.Supervisor.Printer
+      |> worker([max_ball_spread, server_pid])
+
+    {:ok, _printer_pid} =
+      sup_pid
+      |> Supervisor.start_child(printer)
   end
 
   def init(_args) do
-    supervise([], strategy: :one_for_one)
+    supervise([], strategy: :one_for_all)
+  end
+
+  defp fetch_max_ball_spread! do
+    {:ok, columns} = :io.columns
+    
+    columns
+    |> div(2)
+    |> + 1
+    |> div(2)
   end
 end

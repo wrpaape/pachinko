@@ -3,13 +3,12 @@ defmodule Pachinko do
 
   # See http://elixir-lang.org/docs/stable/elixir/Application.html
   # for more information on OTP Applications
+
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
 
-    {:ok, columns} = :io.columns
-
-    
-    Pachinko.Supervisor.start_link(columns)
+    {:ok, _sup_pid} =
+      Pachinko.Supervisor.start_link
   end
 
   def generate_slots(max_pos, token) do
