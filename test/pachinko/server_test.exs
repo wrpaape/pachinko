@@ -19,22 +19,17 @@ defmodule Pachinko.Server.Test do
     assert lhs == rhs
   end
 
-  test "state returns {live_balls, buckets}, never dead balls" do
-    lhs =
-      Pachinko.Server.state
-      |> tuple_size
-    rhs = 2
-
-    assert lhs == rhs
-  end
-
-  test "buckets are not updated until after all balls are in play" do
+  """
+  buckets are not updated until after all balls are in play,
+  state stops returning dead_balls after all balls are in play
+  """
+  |> test do
     # app initialized with a max_ball_spread of 1 in test environment,
     # so at most 2 balls in play
-    {[],     buckets0} = Pachinko.Server.state
-    {[0],    buckets1} = Pachinko.Server.update
-    {[0, _], buckets2} = Pachinko.Server.update
-    {[0, _], buckets3} = Pachinko.Server.update
+    {[0, 0], []    , buckets0} = Pachinko.Server.state
+    {[0]   , [0]   , buckets1} = Pachinko.Server.update
+    {[]    , [0, _], buckets2} = Pachinko.Server.update
+            {[0, _], buckets3} = Pachinko.Server.update
 
     lhs = {buckets0 == buckets1, buckets1 == buckets2, buckets2 == buckets3}
     rhs = {        true        ,         true        ,         false       }

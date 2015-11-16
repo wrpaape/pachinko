@@ -44,16 +44,15 @@ defmodule Pachinko.Printer do
   ########################################################################
 
   def start_link(max_ball_spread, server_pid) do
-    ok_printer_pid =
-      {:ok, _printer_pid} =
-        __MODULE__
-        |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
-    
+    {:ok, _printer_pid} =
+      __MODULE__
+      |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
+  end
+
+  def start do
     {:ok, {:interval, _ref}} = 
       @frame_interval
       |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
-
-    ok_printer_pid
   end
 
   def state, do: GenServer.call(__MODULE__, :state)
@@ -72,12 +71,11 @@ defmodule Pachinko.Printer do
     {:ok, initial_state}
   end
 
-  def handle_cast(:print, {peg_rows, server_pid}) do
-    {balls, buckets} = Pachinko.Server.update
+  def handle_cast(:print, state) do
+    Pachinko.Server.update
+    # |> print(state)
 
-    IO.puts build_curve(buckets)
-
-    {:noreply, {peg_rows, server_pid}}
+    {:noreply, state}    
   end
 
   def handle_call(:state, _from, state), do: {:reply, state, state}
@@ -85,6 +83,17 @@ defmodule Pachinko.Printer do
   ######################################################################
   #                           public helpers                           #
   ######################################################################
+
+  def print({live_balls, buckets}, {peg_rows, server_pid}) do
+    # buckets
+    # |> build_bell_curve
+    # |> IO.puts
+    # IO.puts "alive"
+  end
+
+  def print({dead_balls, live_balls, buckets}, {peg_rows, server_pid}) do
+    # IO.puts "dead"
+  end
 
   def generate_peg_rows(last_num_pegs) do
     0..last_num_pegs
@@ -94,13 +103,19 @@ defmodule Pachinko.Printer do
     end)
   end
 
-  def build_curve(buckets) do
+  # def build_pachinko(peg_rows, balls) do
+  #   peg_rows
+  #   |>
+  #   |> Enum.map_join("\n", &pachinko_row(&1, ))
+  # end
+
+  def build_bell_curve(buckets) do
     {:ok, rows} = :io.rows
     rows..1
-    |> Enum.map_join("\n", &curve_row(&1, buckets))
+    |> Enum.map_join("\n", &bell_curve_row(&1, buckets))
   end
 
-  def curve_row(row, buckets) do
+  def bell_curve_row(row, buckets) do
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do

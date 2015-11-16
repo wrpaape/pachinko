@@ -58,7 +58,8 @@ defmodule Pachinko.Server do
         end
       end)
 
-    reply_state({next_balls, next_buckets})    
+    {next_balls, next_buckets}
+    |> reply_state   
   end
 
   # last of dead balls are dropped, the empty list will be dropped
@@ -73,7 +74,8 @@ defmodule Pachinko.Server do
     next_balls =
       [live_ball | shift(live_balls)]
 
-    reply_state({dead_balls, next_balls, buckets})    
+    {dead_balls, next_balls, buckets}
+    |> reply_state
   end
 
   def handle_call(:state, _from, state), do: reply_state(state)
@@ -87,9 +89,7 @@ defmodule Pachinko.Server do
     |> GenServer.call(msg)
   end
 
-  # do not include dead_balls in reply
-  defp reply_state({live_balls, buckets}), do: {:reply, {live_balls, buckets}, {live_balls, buckets}}
-  defp reply_state(drop_state),            do: {:reply, Tuple.delete_at(drop_state, 0), drop_state}
+  defp reply_state(state), do: {:reply, state, state}
 
   defp generate_balls(num_balls), do: List.duplicate(0, num_balls)
 
