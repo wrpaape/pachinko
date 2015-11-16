@@ -67,7 +67,7 @@ defmodule Pachinko.Printer do
   end
 
   def handle_cast(:print, {peg_rows, server_pid}) do
-    IO.puts "LOL"
+    # IO.puts "LOL"
 
     {:noreply, {peg_rows, server_pid}}
   end
