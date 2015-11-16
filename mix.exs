@@ -16,7 +16,7 @@ defmodule Pachinko.Mixfile do
   def application do
     [
       applications: [:logger],
-      mod: {Pachinko, []},
+      mod: {Pachinko, fetch_max_ball_spread!(Mix.env)},
       registered: [Pachinko.Server, Pachinko.Printer]
     ]
   end
@@ -32,5 +32,15 @@ defmodule Pachinko.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     []
+  end
+
+  defp fetch_max_ball_spread!(:test), do: 1
+  defp fetch_max_ball_spread!(_env) do
+    {:ok, columns} = :io.columns
+    
+    columns
+    |> div(2)
+    |> + 1
+    |> div(2)
   end
 end

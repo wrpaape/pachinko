@@ -81,6 +81,7 @@ defmodule Pachinko.Server do
 
   # helper functions
 
+  # do not include dead_balls in reply
   defp reply_state({live_balls, buckets}), do: {:reply, {live_balls, buckets}, {live_balls, buckets}}
   defp reply_state(drop_state),            do: {:reply, Tuple.delete_at(drop_state, 0), drop_state}
 

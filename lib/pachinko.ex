@@ -4,11 +4,12 @@ defmodule Pachinko do
   # See http://elixir-lang.org/docs/stable/elixir/Application.html
   # for more information on OTP Applications
 
-  def start(_type, _args) do
+  def start(_type, max_ball_spread) do
     import Supervisor.Spec, warn: false
 
     {:ok, _sup_pid} =
-      Pachinko.Supervisor.start_link
+      max_ball_spread
+      |> Pachinko.Supervisor.start_link
   end
 
   def generate_slots(max_pos, token) do

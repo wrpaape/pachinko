@@ -1,19 +1,17 @@
 defmodule Pachinko.Supervisor do
   use Supervisor
 
-  def start_link do
+  def start_link(max_ball_spread) do
     ok_sup_pid =
       {:ok, sup_pid} =
         __MODULE__
         |> Supervisor.start_link([])
 
-    start_workers(sup_pid)
+    start_workers(sup_pid, max_ball_spread)
     ok_sup_pid
   end
 
-  def start_workers(sup_pid) do
-    max_ball_spread = fetch_max_ball_spread!
-
+  def start_workers(sup_pid, max_ball_spread) do
     # Start the server
     server =
       Pachinko.Server
@@ -35,14 +33,5 @@ defmodule Pachinko.Supervisor do
 
   def init(_args) do
     supervise([], strategy: :one_for_all)
-  end
-
-  defp fetch_max_ball_spread! do
-    {:ok, columns} = :io.columns
-    
-    columns
-    |> div(2)
-    |> + 1
-    |> div(2)
   end
 end
