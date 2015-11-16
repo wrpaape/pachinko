@@ -73,7 +73,9 @@ defmodule Pachinko.Printer do
   end
 
   def handle_cast(:print, {peg_rows, server_pid}) do
-    # IO.puts "LOL"
+    {balls, buckets} = Pachinko.Server.update
+
+    IO.puts build_curve(buckets)
 
     {:noreply, {peg_rows, server_pid}}
   end
@@ -109,9 +111,6 @@ defmodule Pachinko.Printer do
       end
     end)
   end
-
-  # %{-2 => " ", 0 => " ", 2 => " "}
-  # %{-5 => " ", -3 => " ", -1 => " ", 1=> " ", 3 => " " , 5 => " "}
 
   @doc """
   Receives ball_pos and splices a ball token (●)

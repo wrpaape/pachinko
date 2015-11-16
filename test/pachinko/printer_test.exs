@@ -45,8 +45,8 @@ defmodule Pachinko.Printer.Test do
     # so 2 rows of pegs are generated
     {peg_rows, server_pid} = Pachinko.Printer.state
 
-    lhs = { [%{ 0 => " "}, %{-1 => " ", 1 => " "}],         true       }
-    rhs = {                peg_rows               , is_pid(server_pid) }
+    lhs = { [%{0 => " "}, %{-1 => " ", 1 => " "}],         true       }
+    rhs = {                peg_rows              , is_pid(server_pid) }
 
     assert lhs == rhs
   end
