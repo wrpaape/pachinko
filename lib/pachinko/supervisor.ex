@@ -15,22 +15,22 @@ defmodule Pachinko.Supervisor do
     max_ball_spread = fetch_max_ball_spread!
 
     # Start the server
-    server_sup =
+    server =
       Pachinko.Server
       |> supervisor([max_ball_spread])
     
     {:ok, server_pid} =
       sup_pid
-      |> Supervisor.start_child(server_sup)
+      |> Supervisor.start_child(server)
 
     # and then the subsupervisor for the printer
-    printer =
+    printer_sup =
       Pachinko.Supervisor.Printer
       |> worker([max_ball_spread, server_pid])
 
-    {:ok, _printer_pid} =
+    {:ok, _printer_sup_pid} =
       sup_pid
-      |> Supervisor.start_child(printer)
+      |> Supervisor.start_child(printer_sup)
   end
 
   def init(_args) do

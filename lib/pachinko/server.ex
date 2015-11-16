@@ -31,7 +31,7 @@ defmodule Pachinko.Server do
       |> generate_balls
 
     initial_state =
-      {dead_balls, [], buckets}
+      {dead_balls, [], empty_buckets}
 
     {:ok, initial_state}
   end
@@ -63,7 +63,7 @@ defmodule Pachinko.Server do
   # last of dead balls are dropped, the empty list will be dropped
   # :update_state is called again to retreive a reply with next_state
   def handle_call(:update_state, from, {[], live_balls, buckets}) do
-    handle_call(:update_state, from, {[live_balls, buckets})
+    handle_call(:update_state, from, {live_balls, buckets})
   end
 
   # balls are dropped into play one at a time
@@ -77,8 +77,6 @@ defmodule Pachinko.Server do
     {:reply, next_state, next_state}
   end
 
-  def handle_cast(:)
-  
   # helper functions
 
   defp generate_balls(num_balls), do: List.duplicate(0, num_balls)

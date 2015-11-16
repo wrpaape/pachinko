@@ -1,17 +1,30 @@
 defmodule Pachinko.Supervisor.Printer do
   use Supervisor
 
-  def start_link(printer_args) do
-    {:ok, _printer_sup_pid} =
-      __MODULE__
-      |> Supervisor.start_link([printer_args])
+  def start_link(max_ball_spread, server_pid) do
+    ok_sup_pid =
+      {:ok, sup_pid} =
+        __MODULE__
+        |> Supervisor.start_link([])
+
+    {:ok, _printer_pid} =
+      max_ball_spread
+      |> start_printer(server_pid, sup_pid)
+
+    ok_sup_pid
   end
 
+  def start_printer(max_ball_spread, server_pid, sup_pid) do
+    printer =
+      Pachinko.Printer
+      |> worker([max_ball_spread, server_pid])
+      
+    sup_pid
+    |> Supervisor.start_child(printer)
+  end
+
+
   def init(max_ball_spread, server_pid) do
-    # Start the server worker and supervise it
-    Sequence.Printer
-    |> worker([max_ball_spread, server_pid])
-    |> List.wrap
-    |> supervise(strategy: :simple_one_for_one)
+    supervise([], strategy: :simple_one_for_one)
   end
 end

@@ -1,6 +1,8 @@
 defmodule Pachinko.Printer do
   @frame_interval 1_000 / 60
 
+  use GenServer
+
   @moduledoc """
   Prints Pachinko state to stdio.
   """
@@ -41,45 +43,48 @@ defmodule Pachinko.Printer do
   # External API
 
   def start_link(max_ball_spread, server_pid) do
-    {:ok, printer_pid} =
+    {:ok, _printer_pid} =
       __MODULE__
       |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
     
-    @frame_interval
-    |> :timer.send_interval(printer_pid, :print)
+    {:ok, {:interval, _ref}} = 
+      @frame_interval
+      |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
   end
-
 
   # GenServer implementation
 
-  def init(server_pid, max_pos) do
-    buckets =
-      max_pos
+  def init(max_ball_spread, server_pid) do
+    peg_rows =
+      max_ball_spread
       |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
 
-    max_pos + 1
-    |> generate_balls
+    initial_state = {peg_rows, server_pid}
 
-    # |> drop([], buckets, server_pid)
+    {:ok, initial_state}
   end
 
-  def generate_peg_rows(last_num_pegs) do
+  def handle_cast(:print, {peg_rows, server_pid}) do
+    IO.puts "LOL"
+  end
+
+  # helper functions
+
+  defp generate_peg_rows(last_num_pegs) do
     0..last_num_pegs
     |> Enum.map(fn(num_pegs) ->
-      num_pegs |> Pachinko.generate_slots(" ")
+      num_pegs
+      |> Pachinko.generate_slots(" ")
     end)
   end
 
-  def ready(peg_rows) do
-  end
-
-  def build_curve(buckets) do
+  defp build_curve(buckets) do
     {:ok, rows} = :io.rows
     rows..1
     |> Enum.map_join("\n", &curve_row(&1, buckets))
   end
 
-  def curve_row(row, buckets) do
+  defp curve_row(row, buckets) do
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do
