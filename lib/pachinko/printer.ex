@@ -64,7 +64,8 @@ defmodule Pachinko.Printer do
 
   def init([max_ball_spread, server_pid]) do
     peg_rows =
-      max_ball_spread..0
+      max_ball_spread
+      |> Range.new(0)
       |> Enum.with_index
       |> Enum.map(&generate_peg_row/1)
 
@@ -106,36 +107,54 @@ defmodule Pachinko.Printer do
     |> IO.puts 
   end
 
+  def print_counters({mouths, base}, bucket_ball, buckets) do
+    printed_top =
+      mouths
+      |> slot_row(bucket_ball, "┼")
+
+    printed_counts =
+      buckets
+      |> Enum.map_join("│", fn({_pos, {count, _full_blocks, _remainder}}) ->
+        count
+        |> Integer.to_string
+      end)
+
+    "├" <> printed_top <> "┤\n│" <> printed_counts <> "│\n" <> base
+  end
+
   def print_row({ { [pad | slots], y }, ball_pos }, buckets) do
     pad <> slot_row(slots, ball_pos, ".") <> pad <> bell_curve_row(y, buckets)
   end
 
-  def generate_counters(num_counters) do
-    tops = Pachinko.reflect_stagger(num_counters)
+  def generate_counters(max_ball_spread) do
+    mouths =
+      max_ball_spread
+      |> Pachinko.reflect_stagger
+
     base =
       "─"
-      |> List.duplicate(num_counters)
+      |> List.duplicate(max_ball_spread + 1)
       |> Enum.join("┴")
 
-    {tops, "└" <> base <> "┘"}
+    {mouths, "└" <> base <> "┘"}
 
 # ├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
 # │0│0│0│0│0│   
 # └─┴─┴─┴─┴─┘
   end
 
-  def generate_peg_row({pad_len, num_pegs}) do
-    { [String.duplicate(" ", pad_len)  | Pachinko.reflect_stagger(num_pegs)], pad_len }
+  def generate_peg_row({y_row, num_pegs}) do
+    { [String.duplicate(" ", y_row + 1)  | Pachinko.reflect_stagger(num_pegs)], y_row }
   end
 
-  def bell_curve_row(y, buckets) do
+  def bell_curve_row(y_row, buckets) do
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do
-        full_blocks < y -> " "
-        full_blocks > y -> "█"
-        remainder  == 0 -> " "
-        true            -> [9600 + remainder] |> List.to_string
+        full_blocks < y_row -> " "
+        full_blocks > y_row -> "█"
+        remainder  == 0     -> " "
+        true                -> [9600 + remainder] |> List.to_string
       end
       |> String.duplicate(2)
     end)

@@ -29,12 +29,12 @@ defmodule Pachinko.Server do
       max_ball_spread
       |> generate_buckets
 
-    dead_balls_tup =
+    dead_and_nil_balls =
       max_ball_spread + 1
       |> generate_balls
 
     initial_state =
-      dead_balls_tup
+      dead_and_nil_balls
       |> Tuple.append(empty_buckets)
 
     {:ok, initial_state}
@@ -95,11 +95,11 @@ defmodule Pachinko.Server do
   end
 
   # do not include dead_balls in reply
-  defp reply_state(state = {live_balls, buckets}), do: {:reply, format(state)                             , state     }
-  defp reply_state(drop_state),                    do: {:reply, drop_state |> Tuple.delete_at(0) |> format, drop_state}
+  defp reply_state(state = {live_balls, bucket_ball, buckets}), do: {:reply, state |> format              , state     }
+  defp reply_state(drop_state),                                 do: {:reply, drop_state |> Tuple.delete_at(0) |> format, drop_state}
 
   # send buckets as sorted keyword list
-  defp format({live_balls, buckets}),              do: {live_balls, Enum.sort(buckets)}
+  defp format({live_balls, bucket_ball, buckets}),              do: {live_balls, bucket_ball, Enum.sort(buckets)}
 
   defp generate_buckets(max_ball_spread) do
     max_ball_spread
@@ -112,6 +112,7 @@ defmodule Pachinko.Server do
     [0, nil]
     |> Enum.map(&List.duplicate(&1, num_balls))
     |> List.to_tuple
+    |> Tuple.append(nil)
   end
 
   defp flip_coin do

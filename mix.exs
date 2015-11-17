@@ -42,6 +42,6 @@ defmodule Pachinko.Mixfile do
     |> div(2)
     |> + 1
     |> div(2)
-    |> - 2
+    |> - 3
   end
 end
