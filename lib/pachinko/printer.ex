@@ -1,6 +1,6 @@
 defmodule Pachinko.Printer do
   # @frame_interval 17 # capped at ~60 fps
-  @frame_interval 50
+  @frame_interval 100
 
   use GenServer
 
@@ -68,7 +68,13 @@ defmodule Pachinko.Printer do
       |> Enum.with_index
       |> Enum.map(&generate_peg_row/1)
 
-    initial_state = {peg_rows, server_pid}
+
+
+    counters = 
+      max_ball_spread
+      |> generate_counters
+
+    initial_state = {peg_rows, counters, server_pid}
 
     {:ok, initial_state}
   end
@@ -86,33 +92,40 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, buckets}, {peg_rows, server_pid}) do
-    # buckets
-    # |> build_bell_curve
-    # |> IO.puts
+  def print({balls, bucket_ball, buckets}, {peg_rows, counters, server_pid}) do
+    printed_counters =
+      counters
+      |> print_counters(bucket_ball, buckets)
 
-    # peg_rows
-    # |> build_pachinko(balls)
-    # |> IO.puts
+    printed_main = 
+      peg_rows
+      |> Enum.zip(balls)
+      |> Enum.map_join("\n", &print_row(&1, buckets))
 
-    peg_rows
-    |> Enum.zip(balls)
-    |> Enum.map_join("\n", &print_row(&1, buckets))
+    printed_main <> "\n" <> printed_counters
+    |> IO.puts 
   end
 
   def print_row({ { [pad | slots], y }, ball_pos }, buckets) do
-    pad <> pachinko_row(slots, ball_pos) <> pad <> bell_curve_row(y, buckets)
-    |> IO.puts
+    pad <> slot_row(slots, ball_pos, ".") <> pad <> bell_curve_row(y, buckets)
+  end
+
+  def generate_counters(num_counters) do
+    tops = Pachinko.reflect_stagger(num_counters)
+    base =
+      "─"
+      |> List.duplicate(num_counters)
+      |> Enum.join("┴")
+
+    {tops, "└" <> base <> "┘"}
+
+# ├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
+# │0│0│0│0│0│   
+# └─┴─┴─┴─┴─┘
   end
 
   def generate_peg_row({pad_len, num_pegs}) do
     { [String.duplicate(" ", pad_len)  | Pachinko.reflect_stagger(num_pegs)], pad_len }
-  end
-
-  def build_bell_curve(buckets) do
-    {:ok, rows} = :io.rows
-    rows..1
-    |> Enum.map_join("\n", &bell_curve_row(&1, buckets))
   end
 
   def bell_curve_row(y, buckets) do
@@ -143,9 +156,9 @@ defmodule Pachinko.Printer do
       ...> pachinko_row({peg_row, 1})
       " . . . .●. . " 
   """
-  def pachinko_row(slots, ball_pos) do
+  def slot_row(slots, ball_pos, token) do
     slots
-    |> Enum.map_join(".", fn(slot_pos) ->
+    |> Enum.map_join(token, fn(slot_pos) ->
       if slot_pos == ball_pos, do: "●", else: " "
     end)
   end

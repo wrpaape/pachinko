@@ -42,8 +42,8 @@ defmodule Pachinko.Server do
 
   # all balls are live
   # one ball drops into a bucket (dead) and is replaced by a new ball
-  def handle_call(:update, _from, {live_balls, buckets}) do
-    {live_balls, [dead_ball]} =
+  def handle_call(:update, _from, {live_balls, _last_bucket_ball, buckets}) do
+    {live_balls, [bucket_ball]} =
       live_balls
       |> Enum.split(-1)
 
@@ -52,26 +52,26 @@ defmodule Pachinko.Server do
 
     next_buckets =
       buckets
-      |> Map.update!(dead_ball, fn({count, full_blocks, remainder}) ->
+      |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
         case remainder do
           7 -> {count + 1, full_blocks + 1, 0}
           _ -> {count + 1, full_blocks, remainder + 1}
         end
       end)
 
-    {next_balls, next_buckets}
+    {next_balls, bucket_ball, next_buckets}
     |> reply_state   
   end
 
   # last of dead balls are dropped, the empty list will be dropped
   # :update is called again to retreive a reply with next_state
-  def handle_call(:update, from, {[], live_balls, buckets}) do
-    handle_call(:update, from, {live_balls, buckets})
+  def handle_call(:update, from, {[], live_balls, nil, buckets}) do
+    handle_call(:update, from, {live_balls, nil, buckets})
   end
 
   # balls are dropped into play one at a time
   # buckets are still out of reach
-  def handle_call(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, buckets}) do
+  def handle_call(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets}) do
     {live_balls, nil_balls} =
       live_and_nil_balls
       |> Enum.split_while(& &1)
@@ -79,7 +79,7 @@ defmodule Pachinko.Server do
     next_balls =
       [live_ball | shift(live_balls) ++ Enum.drop(nil_balls, 1)]
 
-    {dead_balls, next_balls, buckets}
+    {dead_balls, next_balls, nil, buckets}
     |> reply_state
   end
 
