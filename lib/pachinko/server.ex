@@ -86,14 +86,11 @@ defmodule Pachinko.Server do
 
   defp update_count(buckets, bucket_ball) do
     buckets
-    |> Enum.map(fn(row) ->
-      row
-      |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
-        case remainder do
-          7 -> {count + 1, full_blocks + 1, 0}
-          _ -> {count + 1, full_blocks, remainder + 1}
-        end
-      end)
+    |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
+      case remainder do
+        7 -> {count + 1, full_blocks + 1, 0}
+        _ -> {count + 1, full_blocks, remainder + 1}
+      end
     end)
   end
 
@@ -113,26 +110,14 @@ defmodule Pachinko.Server do
 
   # send buckets as two rows of sorted keyword lists
   defp format({live_balls, bucket_ball, buckets}) do
-    {live_balls, bucket_ball, buckets |> Enum.map(&Enum.sort/1)}
+    {live_balls, bucket_ball, buckets |> Enum.sort}
   end
 
   defp generate_buckets(max_ball_spread) do
-    all_buckets = 
-      max_ball_spread
-      |> Pachinko.reflect_stagger
-      |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
-
-    top_row =
-      all_buckets
-      |> tl
-      |> Enum
-
-    [all_buckets, tl(all_buckets)]
-    |> Enum.map(fn(buckets) ->
-      buckets
-      |> Enum.take_every(2)
-      |> Enum.into(%{})
-    end)
+    max_ball_spread
+    |> Pachinko.reflect_stagger
+    |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
+    |> Enum.into(%{})
   end
 
   defp generate_balls(num_balls) do
