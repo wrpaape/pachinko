@@ -95,12 +95,12 @@ defmodule Pachinko.Server do
   end
 
   # do not include dead_balls in reply
-  defp reply_state({live_balls, buckets}), do: {:reply, {live_balls, buckets}, {live_balls, buckets}}
-  defp reply_state(drop_state),            do: {:reply, Tuple.delete_at(drop_state, 0), drop_state}
+  defp reply_state(state = {live_balls, buckets}), do: {:reply, state                         , state     }
+  defp reply_state(drop_state),                    do: {:reply, Tuple.delete_at(drop_state, 0), drop_state}
 
   defp generate_buckets(max_ball_spread) do
     max_ball_spread
-    |> Pachinko.stagger_reflected
+    |> Pachinko.reflect_stagger
     |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
     |> Enum.into(%{})
   end

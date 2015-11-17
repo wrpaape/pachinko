@@ -12,5 +12,5 @@ defmodule Pachinko do
       |> Pachinko.Supervisor.start_link
   end
 
-  def stagger_reflected(max), do: Enum.take_every(-max..max, 2)
+  def reflect_stagger(max), do: Enum.take_every(-max..max, 2)
 end

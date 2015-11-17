@@ -1,5 +1,6 @@
 defmodule Pachinko.Printer do
-  @frame_interval 170 # capped at ~60 fps
+  # @frame_interval 17 # capped at ~60 fps
+  @frame_interval 100
 
   use GenServer
 
@@ -63,8 +64,9 @@ defmodule Pachinko.Printer do
 
   def init([max_ball_spread, server_pid]) do
     peg_rows =
-      max_ball_spread
-      |> generate_peg_rows
+      max_ball_spread..0
+      |> Enum.with_index
+      |> Enum.map(&generate_peg_row/1)
 
     initial_state = {peg_rows, server_pid}
 
@@ -89,26 +91,30 @@ defmodule Pachinko.Printer do
     # |> build_bell_curve
     # |> IO.puts
 
-    peg_rows
-    |> build_pachinko(balls)
-    |> IO.puts
-  end
+    # peg_rows
+    # |> build_pachinko(balls)
+    # |> IO.puts
 
-
-  def generate_peg_rows(last_num_pegs) do
-    lpad_key = -(last_num_pegs + 1)
-    lpad = &(String.duplicate(" ", last_num_pegs - &1))
-
-    0..last_num_pegs
-    |> Enum.map(fn(num_pegs) ->
-      [lpad.(num_pegs) | Pachinko.stagger_reflected(num_pegs)]
-    end)
-  end
-
-  def build_pachinko(peg_rows, balls) do
     peg_rows
     |> Enum.zip(balls)
-    |> Enum.map_join("\n", &pachinko_row(&1))
+    |> Enum.with_index
+    |> Enum.map_join("\n", &print_row(&1, buckets))
+  end
+
+  def print_row({ { [pad | slots], row_index }, ball_pos }, buckets) do
+    pad <> pachinko_row(slots, ball_pos) <> pad <> bell_curve_row(row_index, buckets)
+  end
+
+  def generate_peg_row({pad_len, num_pegs}) do
+    pad =
+      String.duplicate(" ", pad_len) 
+
+    slots =
+      num_pegs
+      Pachinko.reflect_stagger
+      
+      {[pad | slots], num_pegs}
+    end)
   end
 
   def build_bell_curve(buckets) do
@@ -117,7 +123,7 @@ defmodule Pachinko.Printer do
     |> Enum.map_join("\n", &bell_curve_row(&1, buckets))
   end
 
-  def bell_curve_row(row, buckets) do
+  def bell_curve_row(row_index, buckets) do
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do
@@ -135,23 +141,20 @@ defmodule Pachinko.Printer do
   the resulting display string to the print process.
 
   ## Example
-      iex> import Pachinko.Printer, only: [pachinko_row: 2]
-      ...> peg_row = Pachinko.generate_slots(2, " ")
-      ...> pachinko_row(peg_row)
+      iex> import Pachinko.Printer, only: [state: 0]
+      ...> {[first_row | rest], _} = Pachinko.Printer.state
+      ...> pachinko_row({peg_row, nil})
       " . . "
 
       ...> peg_row = Pachinko.generate_slots(5, " ")
       ...> pachinko_row({peg_row, 1})
       " . . . .●. . " 
   """
-  def pachinko_row({[lpad | slots], ball_pos}) do
-    unpadded =
-      slots
-      |> Enum.map_join(".", fn(slot_pos) ->
-        if slot_pos == ball_pos, do: "●", else: " "
-      end)
-
-    lpad <> unpadded
+  def pachinko_row({[pad | slots], ball_pos}) do
+    slots
+    |> Enum.map_join(".", fn(slot_pos) ->
+      if slot_pos == ball_pos, do: "●", else: " "
+    end)
   end
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
