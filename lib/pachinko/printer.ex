@@ -1,6 +1,6 @@
 defmodule Pachinko.Printer do
   # @frame_interval 17 # capped at ~60 fps
-  @frame_interval 100
+  @frame_interval 50
 
   use GenServer
 
@@ -100,8 +100,8 @@ defmodule Pachinko.Printer do
     |> Enum.map_join("\n", &print_row(&1, buckets))
   end
 
-  def print_row({ { [pad | slots], row_index }, ball_pos }, buckets) do
-    pad <> pachinko_row(slots, ball_pos) <> pad <> bell_curve_row(row_index, buckets)
+  def print_row({ { [pad | slots], y }, ball_pos }, buckets) do
+    pad <> pachinko_row(slots, ball_pos) <> pad <> bell_curve_row(y, buckets)
     |> IO.puts
   end
 
@@ -115,15 +115,16 @@ defmodule Pachinko.Printer do
     |> Enum.map_join("\n", &bell_curve_row(&1, buckets))
   end
 
-  def bell_curve_row(row_index, buckets) do
+  def bell_curve_row(y, buckets) do
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do
-        full_blocks < row_index -> " "
-        full_blocks > row_index -> "█"
-        remainder == 0          -> " "
-        true                    -> [9600 + remainder]
+        full_blocks < y -> " "
+        full_blocks > y -> "█"
+        remainder  == 0 -> " "
+        true            -> [9600 + remainder] |> List.to_string
       end
+      |> String.duplicate(2)
     end)
   end
 

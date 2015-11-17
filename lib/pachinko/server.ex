@@ -95,8 +95,11 @@ defmodule Pachinko.Server do
   end
 
   # do not include dead_balls in reply
-  defp reply_state(state = {live_balls, buckets}), do: {:reply, state                         , state     }
-  defp reply_state(drop_state),                    do: {:reply, Tuple.delete_at(drop_state, 0), drop_state}
+  defp reply_state(state = {live_balls, buckets}), do: {:reply, format(state)                             , state     }
+  defp reply_state(drop_state),                    do: {:reply, drop_state |> Tuple.delete_at(0) |> format, drop_state}
+
+  # send buckets as sorted keyword list
+  defp format({live_balls, buckets}),              do: {live_balls, Enum.sort(buckets)}
 
   defp generate_buckets(max_ball_spread) do
     max_ball_spread
