@@ -16,11 +16,12 @@ defmodule Pachinko do
     -max_pos..max_pos
     |> Enum.take_every(2)
     |> Enum.map(&{&1, token})
-  end
-
-  def generate_slots(max_pos, token, :into_map) do
-    max_pos
-    |> generate_slots(token)
     |> Enum.into(%{})
   end
+
+  # def generate_slots(max_pos, token, :into_map) do
+  #   max_pos
+  #   |> generate_slots(token)
+  #   |> Enum.into(%{})
+  # end
 end

@@ -114,13 +114,14 @@ defmodule Pachinko.Printer do
   end
 
   def generate_peg_rows(last_num_pegs) do
+    lpad_key = -(last_num_pegs + 1)
     lpad = &(String.duplicate(" ", last_num_pegs - &1))
 
     0..last_num_pegs
     |> Enum.map(fn(num_pegs) ->
       num_pegs
       |> Pachinko.generate_slots(" ")
-      |> Map.put_new(:lpad, lpad.(num_pegs))
+      |> Map.put_new(lpad_key, lpad.(num_pegs))
     end)
   end
 
@@ -165,27 +166,37 @@ defmodule Pachinko.Printer do
   ## Example
       iex> import Pachinko.Printer, only: [pachinko_row: 2]
       ...> peg_row = Pachinko.generate_slots(2, " ")
-      ...> pachinko_row(peg_row, -2)
-      "●. . "
+      ...> pachinko_row(peg_row)
+      " . . "
 
       ...> peg_row = Pachinko.generate_slots(5, " ")
-      ...> pachinko_row(peg_row, 1)
+      ...> pachinko_row({peg_row, 1})
       " . . . .●. . " 
   """
-  defp join_and_pad(row_with_pad) do
-    unpadded_row =
-      row
-      |> Map.values
-      |> Enum.join(".")
+  defp sort_and_join(row) do
+    row
+    |> Enum.sort
+    |> Enum.map_join(".", fn({_, token}) ->
+      token
+    end)
   end
 
   def pachinko_row({peg_row, ball_pos}) do
     peg_row
     |> Map.put(ball_pos, "●")
-    |> join_and_pad
+
+    |> Enum.reduce(fn(slot_pos, acc) ->
+      case slot_pos do
+        ^ball_pos -> " ●"
+        _________ -> " ." 
+      end
+       <> <>
+    end)
+
+    |> sort_and_join
   end
 
-  def pachinko_row(peg_row), do: join_and_pad(peg_row)
+  def pachinko_row(peg_row), do: sort_and_join(peg_row)
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
 
