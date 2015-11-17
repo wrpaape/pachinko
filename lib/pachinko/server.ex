@@ -71,13 +71,13 @@ defmodule Pachinko.Server do
 
   # balls are dropped into play one at a time
   # buckets are still out of reach
-  def handle_call(:update, _from, {[live_ball | dead_balls], live_balls, buckets}) do
-    {live_balls, [nil]} =
-      live_balls
-      |> Enum.split(-1)
-      
+  def handle_call(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, buckets}) do
+    {live_balls, nil_balls} =
+      live_and_nil_balls
+      |> Enum.split_while(& &1)
+
     next_balls =
-      [live_ball | shift(live_balls)]
+      [live_ball | shift(live_balls) ++ Enum.drop(nil_balls, 1)]
 
     {dead_balls, next_balls, buckets}
     |> reply_state

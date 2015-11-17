@@ -84,34 +84,16 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({live_balls, buckets}, {peg_rows, server_pid}) do
+  def print({balls, buckets}, {peg_rows, server_pid}) do
     # buckets
     # |> build_bell_curve
     # |> IO.puts
 
     peg_rows
-    |> build_pachinko(live_balls)
+    |> build_pachinko(balls)
     |> IO.puts
   end
 
-  def print({_dead_balls, live_balls, buckets}, {peg_rows, server_pid}) do
-    # IO.puts "dead"
-      peg_rows
-      |> Enum.split(live_balls |> length)
-      |> Tuple.append(live_balls)
-      |> build_pachinko
-      |> IO.puts
-
-    
-    |> IO.puts
-
-    # dead_rows =
-    #   build_pachinko
-    #   |> build
-    # peg_rows
-    # |> build_pachinko(live_balls)
-    # |> List.concat()
-  end
 
   def generate_peg_rows(last_num_pegs) do
     lpad_key = -(last_num_pegs + 1)
@@ -119,25 +101,14 @@ defmodule Pachinko.Printer do
 
     0..last_num_pegs
     |> Enum.map(fn(num_pegs) ->
-      num_pegs
-      |> Pachinko.stagger_reflected
-      |> Map.put_new(lpad_key, lpad.(num_pegs))
+      [lpad.(num_pegs) | Pachinko.stagger_reflected(num_pegs)]
     end)
   end
 
-  defp map_rows(rows) do
-    rows
+  def build_pachinko(peg_rows, balls) do
+    peg_rows
+    |> Enum.zip(balls)
     |> Enum.map_join("\n", &pachinko_row(&1))
-  end
-
-  def build_pachinko(live_rows, live_balls) do
-    live_rows
-    |> Enum.zip(live_balls)
-    |> map_rows
-  end
-
-  def build_pachinko({live_rows, dead_rows, live_balls}) do
-    build_pachinko(live_rows, live_balls) <> "\n" <> map_rows(dead_rows)
   end
 
   def build_bell_curve(buckets) do
@@ -173,11 +144,14 @@ defmodule Pachinko.Printer do
       ...> pachinko_row({peg_row, 1})
       " . . . .●. . " 
   """
-  def pachinko_row({lpad, slots}, ball_pos) do
-    slots
-    |> Enum.map_join(".", fn(slot_pos) ->
-      if slot_pos == ball_pos, do: "●", else: " "
-    end)
+  def pachinko_row({[lpad | slots], ball_pos}) do
+    unpadded =
+      slots
+      |> Enum.map_join(".", fn(slot_pos) ->
+        if slot_pos == ball_pos, do: "●", else: " "
+      end)
+
+    lpad <> unpadded
   end
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
