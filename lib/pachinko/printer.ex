@@ -97,24 +97,16 @@ defmodule Pachinko.Printer do
 
     peg_rows
     |> Enum.zip(balls)
-    |> Enum.with_index
     |> Enum.map_join("\n", &print_row(&1, buckets))
   end
 
   def print_row({ { [pad | slots], row_index }, ball_pos }, buckets) do
     pad <> pachinko_row(slots, ball_pos) <> pad <> bell_curve_row(row_index, buckets)
+    |> IO.puts
   end
 
   def generate_peg_row({pad_len, num_pegs}) do
-    pad =
-      String.duplicate(" ", pad_len) 
-
-    slots =
-      num_pegs
-      Pachinko.reflect_stagger
-      
-      {[pad | slots], num_pegs}
-    end)
+    { [String.duplicate(" ", pad_len)  | Pachinko.reflect_stagger(num_pegs)], pad_len }
   end
 
   def build_bell_curve(buckets) do
@@ -127,10 +119,10 @@ defmodule Pachinko.Printer do
     buckets
     |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
       cond do
-        full_blocks < row -> " "
-        full_blocks > row -> "█"
-        remainder == 0    -> " "
-        true              -> [9600 + remainder]
+        full_blocks < row_index -> " "
+        full_blocks > row_index -> "█"
+        remainder == 0          -> " "
+        true                    -> [9600 + remainder]
       end
     end)
   end
@@ -150,7 +142,7 @@ defmodule Pachinko.Printer do
       ...> pachinko_row({peg_row, 1})
       " . . . .●. . " 
   """
-  def pachinko_row({[pad | slots], ball_pos}) do
+  def pachinko_row(slots, ball_pos) do
     slots
     |> Enum.map_join(".", fn(slot_pos) ->
       if slot_pos == ball_pos, do: "●", else: " "
