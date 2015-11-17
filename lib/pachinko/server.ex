@@ -27,7 +27,7 @@ defmodule Pachinko.Server do
   def init(max_ball_spread) do
     empty_buckets =
       max_ball_spread
-      |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
+      |> Pachinko.generate_slots(Tuple.duplicate(0, 3), :into_map)
 
     dead_balls =
       max_ball_spread + 1

@@ -1,5 +1,5 @@
 defmodule Pachinko.Printer do
-  @frame_interval 1700 # capped at ~60 fps
+  @frame_interval 170 # capped at ~60 fps
 
   use GenServer
 
@@ -90,17 +90,19 @@ defmodule Pachinko.Printer do
     # |> IO.puts
 
     peg_rows
-    |> Enum.zip(live_balls)
-    |> build_pachinko
+    |> build_pachinko(live_balls)
     |> IO.puts
   end
 
-  def print({dead_balls, live_balls, buckets}, {peg_rows, server_pid}) do
+  def print({_dead_balls, live_balls, buckets}, {peg_rows, server_pid}) do
     # IO.puts "dead"
+      peg_rows
+      |> Enum.split(live_balls |> length)
+      |> Tuple.append(live_balls)
+      |> build_pachinko
+      |> IO.puts
 
-    peg_rows
-    |> Enum.zip(live_balls)
-    |> build_pachinko
+    
     |> IO.puts
 
     # dead_rows =
@@ -112,16 +114,29 @@ defmodule Pachinko.Printer do
   end
 
   def generate_peg_rows(last_num_pegs) do
+    lpad = &(String.duplicate(" ", last_num_pegs - &1))
+
     0..last_num_pegs
     |> Enum.map(fn(num_pegs) ->
       num_pegs
       |> Pachinko.generate_slots(" ")
+      |> Map.put_new(:lpad, lpad.(num_pegs))
     end)
   end
 
-  def build_pachinko(rows) do
+  defp map_rows(rows) do
     rows
     |> Enum.map_join("\n", &pachinko_row(&1))
+  end
+
+  def build_pachinko(live_rows, live_balls) do
+    live_rows
+    |> Enum.zip(live_balls)
+    |> map_rows
+  end
+
+  def build_pachinko({live_rows, dead_rows, live_balls}) do
+    build_pachinko(live_rows, live_balls) <> "\n" <> map_rows(dead_rows)
   end
 
   def build_bell_curve(buckets) do
@@ -157,18 +172,20 @@ defmodule Pachinko.Printer do
       ...> pachinko_row(peg_row, 1)
       " . . . .●. . " 
   """
+  defp join_and_pad(row_with_pad) do
+    unpadded_row =
+      row
+      |> Map.values
+      |> Enum.join(".")
+  end
+
   def pachinko_row({peg_row, ball_pos}) do
     peg_row
     |> Map.put(ball_pos, "●")
-    |> Map.values
-    |> Enum.join(".")
+    |> join_and_pad
   end
 
-  def pachinko_row(peg_row) do
-    peg_row
-    |> Map.values
-    |> Enum.join(".")
-  end
+  def pachinko_row(peg_row), do: join_and_pad(peg_row)
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
 
