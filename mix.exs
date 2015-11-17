@@ -16,7 +16,7 @@ defmodule Pachinko.Mixfile do
   def application do
     [
       applications: [:logger],
-      mod: {Pachinko, fetch_max_ball_spread!(Mix.env)},
+      mod: {Pachinko, fetch_spread_and_pad!(Mix.env)},
       registered: [Pachinko.Server, Pachinko.Printer]
     ]
   end
@@ -34,14 +34,32 @@ defmodule Pachinko.Mixfile do
     []
   end
 
-  defp fetch_max_ball_spread!(:test), do: 1
-  defp fetch_max_ball_spread!(_env) do
-    {:ok, columns} = :io.columns
+  defp fetch!({:ok, result}), do: result
+  defp fetch_dims! do
+    [:rows, :columns]
+    |> Enum.map(fn(dim) ->
+      :io
+      |> apply(dim, [])
+      |> fetch!
+    end)
+  end
+
+  defp fetch_spread_and_pad!(:test), do: {1, 0}
+  defp fetch_spread_and_pad!(_env) do
+    [rows, columns] = fetch_dims!
     
-    columns
-    |> div(2)
-    |> + 1
-    |> div(2)
-    |> - 3
+    max_ball_spread = 
+      columns
+      |> div(2)
+      |> + 1
+      |> div(2)
+      |> - 3
+
+    top_pad_len =
+      rows
+      |> - max_ball_spread
+      |> - 3
+
+    { max_ball_spread, String.duplicate("\n", top_pad_len) }
   end
 end

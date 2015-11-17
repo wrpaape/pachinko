@@ -52,13 +52,8 @@ defmodule Pachinko.Server do
 
     next_buckets =
       buckets
-      |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
-        case remainder do
-          7 -> {count + 1, full_blocks + 1, 0}
-          _ -> {count + 1, full_blocks, remainder + 1}
-        end
-      end)
-
+      |> update_count(bucket_ball)
+      
     {next_balls, bucket_ball, next_buckets}
     |> reply_state   
   end
@@ -89,23 +84,55 @@ defmodule Pachinko.Server do
   #                          private helpers                           #
   ######################################################################
 
+  defp update_count(buckets, bucket_ball) do
+    buckets
+    |> Enum.map(fn(row) ->
+      row
+      |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
+        case remainder do
+          7 -> {count + 1, full_blocks + 1, 0}
+          _ -> {count + 1, full_blocks, remainder + 1}
+        end
+      end)
+    end)
+  end
+
   defp call(msg) do
     __MODULE__
     |> GenServer.call(msg)
   end
 
   # do not include dead_balls in reply
-  defp reply_state(state = {live_balls, bucket_ball, buckets}), do: {:reply, state |> format              , state     }
-  defp reply_state(drop_state),                                 do: {:reply, drop_state |> Tuple.delete_at(0) |> format, drop_state}
+  defp reply_state(state = {_live_balls, _bucket_ball, _buckets}) do 
+    {:reply, state |> format, state}
+  end
 
-  # send buckets as sorted keyword list
-  defp format({live_balls, bucket_ball, buckets}),              do: {live_balls, bucket_ball, Enum.sort(buckets)}
+  defp reply_state(drop_state) do 
+    {:reply, drop_state |> Tuple.delete_at(0) |> format, drop_state}
+  end
+
+  # send buckets as two rows of sorted keyword lists
+  defp format({live_balls, bucket_ball, buckets}) do
+    {live_balls, bucket_ball, buckets |> Enum.map(&Enum.sort/1)}
+  end
 
   defp generate_buckets(max_ball_spread) do
-    max_ball_spread
-    |> Pachinko.reflect_stagger
-    |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
-    |> Enum.into(%{})
+    all_buckets = 
+      max_ball_spread
+      |> Pachinko.reflect_stagger
+      |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
+
+    top_row =
+      all_buckets
+      |> tl
+      |> Enum
+
+    [all_buckets, tl(all_buckets)]
+    |> Enum.map(fn(buckets) ->
+      buckets
+      |> Enum.take_every(2)
+      |> Enum.into(%{})
+    end)
   end
 
   defp generate_balls(num_balls) do

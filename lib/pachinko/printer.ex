@@ -44,10 +44,10 @@ defmodule Pachinko.Printer do
   #                             external API                             #
   ########################################################################
 
-  def start_link(max_ball_spread, server_pid) do
+  def start_link(spread_and_pad) do
     {:ok, _printer_pid} =
       __MODULE__
-      |> GenServer.start_link([max_ball_spread, server_pid], name: __MODULE__)
+      |> GenServer.start_link([spread_and_pad], name: __MODULE__)
   end
 
   def start do
@@ -62,20 +62,22 @@ defmodule Pachinko.Printer do
   #                       GenServer implementation                       #
   ########################################################################
 
-  def init([max_ball_spread, server_pid]) do
+  def init([{max_ball_spread, top_pad}]) do
+    require Integer
+    
     peg_rows =
       max_ball_spread
       |> Range.new(0)
       |> Enum.with_index
       |> Enum.map(&generate_peg_row/1)
-
-
+      
 
     counters = 
       max_ball_spread
       |> generate_counters
 
-    initial_state = {peg_rows, counters, server_pid}
+    initial_state =
+      {peg_rows, counters, top_pad}
 
     {:ok, initial_state}
   end
@@ -93,7 +95,7 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bucket_ball, buckets}, {peg_rows, counters, server_pid}) do
+  def print({balls, bucket_ball, buckets}, {peg_rows, counters, top_pad}) do
     printed_counters =
       counters
       |> print_counters(bucket_ball, buckets)
@@ -103,7 +105,7 @@ defmodule Pachinko.Printer do
       |> Enum.zip(balls)
       |> Enum.map_join("\n", &print_row(&1, buckets))
 
-    printed_main <> "\n" <> printed_counters
+    top_pad <> printed_main <> "\n" <> printed_counters
     |> IO.puts 
   end
 
@@ -114,9 +116,16 @@ defmodule Pachinko.Printer do
 
     printed_counts =
       buckets
-      |> Enum.map_join("│", fn({_pos, {count, _full_blocks, _remainder}}) ->
+      |> Enum.map_join(fn({_pos, {count, _full_blocks, _remainder}}) ->
+        count_str = 
         count
         |> Integer.to_string
+
+        case byte_size(count_str) do
+          1 -> " " <> count_str <> " "
+          2 ->        count_str <> " "
+          _ ->        count_str
+        end
       end)
 
     "├" <> printed_top <> "┤\n│" <> printed_counts <> "│\n" <> base
@@ -127,6 +136,8 @@ defmodule Pachinko.Printer do
   end
 
   def generate_counters(max_ball_spread) do
+    require Integer
+
     mouths =
       max_ball_spread
       |> Pachinko.reflect_stagger
@@ -144,7 +155,15 @@ defmodule Pachinko.Printer do
   end
 
   def generate_peg_row({y_row, num_pegs}) do
-    { [String.duplicate(" ", y_row + 1)  | Pachinko.reflect_stagger(num_pegs)], y_row }
+    pad =
+      " "
+      |> String.duplicate(y_row + 1)
+
+    slots =
+      num_pegs
+      |> Pachinko.reflect_stagger
+
+    {[pad | slots], y_row}
   end
 
   def bell_curve_row(y_row, buckets) do

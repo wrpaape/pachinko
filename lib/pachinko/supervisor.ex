@@ -1,30 +1,30 @@
 defmodule Pachinko.Supervisor do
   use Supervisor
 
-  def start_link(max_ball_spread) do
+  def start_link(spread_and_pad) do
     ok_sup_pid =
       {:ok, sup_pid} =
         __MODULE__
         |> Supervisor.start_link([])
 
-    start_workers(sup_pid, max_ball_spread)
+    start_workers(sup_pid, spread_and_pad)
     ok_sup_pid
   end
 
-  def start_workers(sup_pid, max_ball_spread) do
+  def start_workers(sup_pid, spread_and_pad = {max_ball_spread, _top_pad}) do
     # Start the server
     server =
       Pachinko.Server
       |> supervisor([max_ball_spread])
 
-    {:ok, server_pid} =
+    {:ok, _server_pid} =
       sup_pid
       |> Supervisor.start_child(server)
 
     # and then the subsupervisor for the printer
     printer_sup =
       Pachinko.Printer.Supervisor
-      |> worker([max_ball_spread, server_pid])
+      |> worker([spread_and_pad])
 
     {:ok, _printer_sup_pid} =
       sup_pid
