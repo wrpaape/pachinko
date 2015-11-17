@@ -27,14 +27,15 @@ defmodule Pachinko.Server do
   def init(max_ball_spread) do
     empty_buckets =
       max_ball_spread
-      |> Pachinko.generate_slots(Tuple.duplicate(0, 3))
+      |> generate_buckets
 
-    dead_balls =
+    dead_balls_tup =
       max_ball_spread + 1
       |> generate_balls
 
     initial_state =
-      {dead_balls, [], empty_buckets}
+      dead_balls_tup
+      |> Tuple.append(empty_buckets)
 
     {:ok, initial_state}
   end
@@ -71,6 +72,10 @@ defmodule Pachinko.Server do
   # balls are dropped into play one at a time
   # buckets are still out of reach
   def handle_call(:update, _from, {[live_ball | dead_balls], live_balls, buckets}) do
+    {live_balls, [nil]} =
+      live_balls
+      |> Enum.split(-1)
+      
     next_balls =
       [live_ball | shift(live_balls)]
 
@@ -89,9 +94,22 @@ defmodule Pachinko.Server do
     |> GenServer.call(msg)
   end
 
-  defp reply_state(state), do: {:reply, state, state}
+  # do not include dead_balls in reply
+  defp reply_state({live_balls, buckets}), do: {:reply, {live_balls, buckets}, {live_balls, buckets}}
+  defp reply_state(drop_state),            do: {:reply, Tuple.delete_at(drop_state, 0), drop_state}
 
-  defp generate_balls(num_balls), do: List.duplicate(0, num_balls)
+  defp generate_buckets(max_ball_spread) do
+    max_ball_spread
+    |> Pachinko.stagger_reflected
+    |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
+    |> Enum.into(%{})
+  end
+
+  defp generate_balls(num_balls) do
+    [0, nil]
+    |> Enum.map(&List.duplicate(&1, num_balls))
+    |> List.to_tuple
+  end
 
   defp flip_coin do
     rand = :rand.uniform

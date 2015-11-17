@@ -120,7 +120,7 @@ defmodule Pachinko.Printer do
     0..last_num_pegs
     |> Enum.map(fn(num_pegs) ->
       num_pegs
-      |> Pachinko.generate_slots(" ")
+      |> Pachinko.stagger_reflected
       |> Map.put_new(lpad_key, lpad.(num_pegs))
     end)
   end
@@ -173,30 +173,12 @@ defmodule Pachinko.Printer do
       ...> pachinko_row({peg_row, 1})
       " . . . .●. . " 
   """
-  defp sort_and_join(row) do
-    row
-    |> Enum.sort
-    |> Enum.map_join(".", fn({_, token}) ->
-      token
+  def pachinko_row({lpad, slots}, ball_pos) do
+    slots
+    |> Enum.map_join(".", fn(slot_pos) ->
+      if slot_pos == ball_pos, do: "●", else: " "
     end)
   end
-
-  def pachinko_row({peg_row, ball_pos}) do
-    peg_row
-    |> Map.put(ball_pos, "●")
-
-    |> Enum.reduce(fn(slot_pos, acc) ->
-      case slot_pos do
-        ^ball_pos -> " ●"
-        _________ -> " ." 
-      end
-       <> <>
-    end)
-
-    |> sort_and_join
-  end
-
-  def pachinko_row(peg_row), do: sort_and_join(peg_row)
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
 

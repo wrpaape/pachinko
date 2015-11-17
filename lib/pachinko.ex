@@ -12,16 +12,5 @@ defmodule Pachinko do
       |> Pachinko.Supervisor.start_link
   end
 
-  def generate_slots(max_pos, token) do
-    -max_pos..max_pos
-    |> Enum.take_every(2)
-    |> Enum.map(&{&1, token})
-    |> Enum.into(%{})
-  end
-
-  # def generate_slots(max_pos, token, :into_map) do
-  #   max_pos
-  #   |> generate_slots(token)
-  #   |> Enum.into(%{})
-  # end
+  def stagger_reflected(max), do: Enum.take_every(-max..max, 2)
 end
