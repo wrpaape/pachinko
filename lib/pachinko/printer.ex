@@ -1,7 +1,4 @@
 defmodule Pachinko.Printer do
-  # @frame_interval 17 # capped at ~60 fps
-  @frame_interval 100
-
   use GenServer
 
   @moduledoc """
@@ -44,15 +41,15 @@ defmodule Pachinko.Printer do
   #                             external API                             #
   ########################################################################
 
-  def start_link(spread_and_pad) do
+  def start_link(spread_pad = {_max_ball_spread, _top_pad}) do
     {:ok, _printer_pid} =
       __MODULE__
-      |> GenServer.start_link([spread_and_pad], name: __MODULE__)
+      |> GenServer.start_link([spread_pad], name: __MODULE__)
   end
 
-  def start do
+  def start(frame_interval) do
     {:ok, {:interval, _ref}} = 
-      @frame_interval
+      frame_interval
       |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
   end
 

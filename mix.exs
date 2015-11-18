@@ -5,6 +5,7 @@ defmodule Pachinko.Mixfile do
     [app: :pachinko,
      version: "0.0.1",
      elixir: "~> 1.1",
+     # escript: escript_config,
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps]
@@ -16,7 +17,7 @@ defmodule Pachinko.Mixfile do
   def application do
     [
       applications: [:logger],
-      mod: {Pachinko, fetch_spread_and_pad!(Mix.env)},
+      mod: {Pachinko, fetch_args!},
       registered: [Pachinko.Server, Pachinko.Printer]
     ]
   end
@@ -61,5 +62,25 @@ defmodule Pachinko.Mixfile do
       |> - 3
 
     { max_ball_spread, String.duplicate("\n", top_pad_len) }
+  end
+  
+  defp to_whole_microseconds(seconds_per_frame) do
+    seconds_per_frame * 1000
+    |> Float.ceil
+    |> trunc
+  end
+  
+  defp fetch_frame_interval! do
+    :pachinko
+    |> Application.get_env(:frame_rate)
+    |> :math.pow(-1) 
+    |> to_whole_microseconds
+  end
+
+  defp fetch_args! do
+    Mix.env
+    |> fetch_spread_and_pad!
+    |> List.wrap
+    |> Enum.concat(fetch_frame_interval! |> List.wrap)
   end
 end

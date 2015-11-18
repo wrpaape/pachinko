@@ -8,6 +8,7 @@ defmodule Pachinko.Supervisor do
         |> Supervisor.start_link([])
 
     start_workers(sup_pid, spread_and_pad)
+
     ok_sup_pid
   end
 

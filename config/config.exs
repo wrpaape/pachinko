@@ -4,8 +4,7 @@ use Mix.Config
 
 config :pachinko,
   [
-    max_frame_rate:     120,
-    default_frame_rate: 30
+    frame_rate: 15 # 15 frames per second
   ]
 
 # This configuration is loaded before any dependency and is restricted
