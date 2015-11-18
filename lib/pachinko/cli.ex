@@ -55,18 +55,26 @@ defmodule Pachinko.CLI do
     article <> " " <> string
   end
 
+  defp is_alias?(arg), do: arg =~ ~r{^-[^-]+}
+
   def get_arg_type(arg) do
-    {status, config_arg, _, _} =
+    if arg |> is_alias? do
+      arg = "-" <> arg
+      opt = :aliases
+    else
+      opt = :strict
+    end
+
+    {_, config_arg, _, _} =
       arg
       |> List.wrap
       |> OptionParser.next
 
-    opt = if status == :ok, do: :strict, else: :aliases
 
     @parse_opts[opt][config_arg]
   end
 
-  def process_invalid_input({config, argv, errors}) do
+  def process_invalid_input({initial_config, argv, errors}) do
     
 
     {type_errors, name_errors} = 
@@ -75,25 +83,22 @@ defmodule Pachinko.CLI do
         val
       end)
 
-    type_errors
-    |> Enum.each(fn({arg, val}) ->
+    errors
+    |> Enum.map(fn({arg, val}) ->
+      if val do
       type = 
         arg |> get_arg_type
 
-      IO.puts "error: #{arg} must be #{type |> Atom.to_string |> prepend_article}"
 
-      parsed_val =
-        val
-        |> try_parse(type)
-
-      if parsed_val do
-
-      end
     end)
   end
 
-  def handle_errors(config, errors) do
+  def handle_errors(initial_config, errors) do
+    IO.puts "error: #{arg} must be #{type |> Atom.to_string |> prepend_article}"
 
+    parsed_val =
+        val
+        |> try_parse(type)
   end
 
 
