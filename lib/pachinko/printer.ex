@@ -82,6 +82,7 @@ defmodule Pachinko.Printer do
   end
 
   def handle_cast(:print, state) do
+    # 800~3500 μs (~10_000 max)to process cast
     Pachinko.Server.update
     |> print(state)
 
