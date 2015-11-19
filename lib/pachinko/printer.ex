@@ -62,19 +62,20 @@ defmodule Pachinko.Printer do
   def init([{max_ball_spread, top_pad}]) do
     require Integer
 
+    y_overflow =
+      max_ball_spread
+      |> + 1
+
     peg_rows =
       max_ball_spread
       |> Range.new(0)
       |> Enum.with_index
-      |> Enum.map(&generate_peg_row/1)
+      |> Enum.map(&generate_peg_row(&1, y_overflow))
 
     counter_pieces = 
       max_ball_spread
       |> generate_counter_pieces
 
-    y_overflow =
-      max_ball_spread
-      |> + 1
 
     initial_state =
       {peg_rows, counter_pieces, top_pad, y_overflow}
@@ -88,7 +89,7 @@ defmodule Pachinko.Printer do
       {_, _, _, max_full_blocks} =
         Pachinko.Server.state
 
-    if max_full_blocks >= 1 do
+    if max_full_blocks >= y_overflow do
       Pachinko.Server.restart
     else
       Pachinko.Server.update
@@ -137,7 +138,7 @@ defmodule Pachinko.Printer do
       |> Tuple.to_list
       |> Enum.map_join("\n", &print_counter_row/1)
 
-    "├" <> printed_top <> "┤\n  " <> printed_counts <> "\n" <> base
+    "├" <> printed_top <> "┤\n  " <> IO.ANSI.green <> printed_counts <> IO.ANSI.white <> "\n" <> base
   end
 
   def print_counter_row(bucket_row) do
@@ -148,15 +149,15 @@ defmodule Pachinko.Printer do
       |> Integer.to_string
 
       case byte_size(count_str) do
-        1 -> " " <> count_str <> " "
-        2 -> " " <> count_str
-        _ ->        count_str
+        1 -> " " <> IO.ANSI.faint <> count_str <> IO.ANSI.normal <> " "
+        2 -> " " <>                  count_str
+        _ ->       IO.ANSI.bright <> count_str <> IO.ANSI.normal
       end
     end)
   end
 
-  def print_row({ { [pad | slots], y }, ball_pos }, buckets) do
-    pad <> slot_row(slots, ball_pos, ".") <> pad <> bell_curve_row(y, buckets)
+  def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, buckets) do
+    pad <> slot_row(slots, ball_pos, ".") <> pad <> bell_curve_row(y_row, row_color, buckets)
   end
 
   def generate_counter_pieces(max_ball_spread) do
@@ -176,7 +177,7 @@ defmodule Pachinko.Printer do
 # └─┴─┴─┴─┴─┘
   end
 
-  def generate_peg_row({y_row, num_pegs}) do
+  def generate_peg_row({y_row, num_pegs}, y_overflow) do
     pad =
       " "
       |> String.duplicate(y_row + 1)
@@ -185,20 +186,35 @@ defmodule Pachinko.Printer do
       num_pegs
       |> Pachinko.reflect_stagger
 
-    {[pad | slots], y_row}
+    y_ratio = y_row / y_overflow
+
+    row_color =
+      cond do
+        y_ratio > 0.85 -> IO.ANSI.magenta
+        y_ratio > 0.70 -> IO.ANSI.red
+        y_ratio > 0.55 -> IO.ANSI.yellow
+        y_ratio > 0.40 -> IO.ANSI.green  
+        y_ratio > 0.20 -> IO.ANSI.cyan
+        true           -> IO.ANSI.blue
+      end
+
+    {[pad | slots], y_row, row_color}
   end
 
-  def bell_curve_row(y_row, buckets) do
-    buckets
-    |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
-      cond do
-        full_blocks < y_row -> " "
-        full_blocks > y_row -> "█"
-        remainder  == 0     -> " "
-        true                -> [9600 + remainder] |> List.to_string
-      end
-      |> String.duplicate(2)
-    end)
+  def bell_curve_row(y_row, row_color, buckets) do
+    row =
+      buckets
+      |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
+        cond do
+          full_blocks < y_row -> " "
+          full_blocks > y_row -> "█"
+          remainder  == 0     -> " "
+          true                -> [9600 + remainder] |> List.to_string
+        end
+        |> String.duplicate(2)
+      end)
+    
+    row_color <> row <> IO.ANSI.white
   end
 
   @doc """
@@ -219,7 +235,7 @@ defmodule Pachinko.Printer do
   def slot_row(slots, ball_pos, token) do
     slots
     |> Enum.map_join(token, fn(slot_pos) ->
-      if slot_pos == ball_pos, do: "●", else: " "
+      if slot_pos == ball_pos, do: IO.ANSI.red <> "●" <> IO.ANSI.white, else: " "
     end)
   end
 
