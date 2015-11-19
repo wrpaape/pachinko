@@ -89,8 +89,8 @@ defmodule Pachinko.Printer do
       {_, _, _, max_full_blocks} =
         Pachinko.Server.state
 
-    if max_full_blocks >= y_overflow do
-      :timer.sleep(1000)
+    if max_full_blocks >= 1 do
+      Pachinko.Server.restart
     else
       Pachinko.Server.update
 

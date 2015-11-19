@@ -33,6 +33,8 @@ defmodule Pachinko.Supervisor do
   end
 
   def init(_args) do
-    supervise([], strategy: :one_for_all)
+    supervise([], strategy: :one_for_one)
   end
+
+  def restart_child(child_pid), do: __MODULE__ |> Supervisor.restart_child(child_pid)
 end

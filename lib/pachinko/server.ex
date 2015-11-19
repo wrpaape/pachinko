@@ -20,6 +20,8 @@ defmodule Pachinko.Server do
 
   def update, do: __MODULE__ |> GenServer.cast(:update)
 
+  def restart, do: sleep 1000; self |> Pachinko.Supervisor.restart_child
+
   ########################################################################
   #                       GenServer implementation                       #
   ########################################################################
@@ -43,7 +45,7 @@ defmodule Pachinko.Server do
 
   # all balls are live
   # one ball drops into a bucket (dead) and is replaced by a new ball
-  def handle_cast(:update, _from, {live_balls, _last_bucket_ball, buckets}) do
+  def handle_cast(:update, {live_balls, _last_bucket_ball, buckets}) do
     {live_balls, [bucket_ball]} =
       live_balls
       |> Enum.split(-1)
@@ -60,13 +62,13 @@ defmodule Pachinko.Server do
 
   # last of dead balls are dropped, the empty list will be dropped
   # :update is casted again to retreive a reply with next_state
-  def handle_cast(:update, from, {[], live_balls, nil, buckets}) do
-    handle_cast(:update, from, {live_balls, nil, buckets})
+  def handle_cast(:update, {[], live_balls, nil, buckets}) do
+    handle_cast(:update, {live_balls, nil, buckets})
   end
 
   # balls are dropped into play one at a time
   # buckets are still out of reach
-  def handle_cast(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets}) do
+  def handle_cast(:update, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets}) do
     {live_balls, nil_balls} =
       live_and_nil_balls
       |> Enum.split_while(& &1)
