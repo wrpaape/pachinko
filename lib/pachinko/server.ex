@@ -20,11 +20,13 @@ defmodule Pachinko.Server do
 
   def update, do: __MODULE__ |> GenServer.cast(:update)
 
-  def restart, do: sleep 1000; self |> Pachinko.Supervisor.restart_child
+  def restart, do: __MODULE__ |> GenServer.cast(:exit)
 
   ########################################################################
   #                       GenServer implementation                       #
   ########################################################################
+
+  def handle_cast(:exit, final_state), do: exit(:normal)
 
   def init(max_ball_spread) do
     empty_buckets =

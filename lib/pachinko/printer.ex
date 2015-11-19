@@ -49,12 +49,11 @@ defmodule Pachinko.Printer do
 
   def start(frame_interval) do
     {:ok, {:interval, _ref}} = 
-      # frame_interval
-      15
+      frame_interval
       |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
   end
 
-  def state, do: GenServer.call(__MODULE__, :state)
+  def state, do: __MODULE__ |> GenServer.call(:state)
 
   ########################################################################
   #                       GenServer implementation                       #

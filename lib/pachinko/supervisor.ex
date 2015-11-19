@@ -13,7 +13,7 @@ defmodule Pachinko.Supervisor do
   end
 
   def start_workers(sup_pid, spread_and_pad = {max_ball_spread, _top_pad}) do
-    # Start the server
+    # Start the printer
     printer =
       Pachinko.Printer
       |> supervisor([spread_and_pad])
@@ -35,6 +35,4 @@ defmodule Pachinko.Supervisor do
   def init(_args) do
     supervise([], strategy: :one_for_one)
   end
-
-  def restart_child(child_pid), do: __MODULE__ |> Supervisor.restart_child(child_pid)
 end

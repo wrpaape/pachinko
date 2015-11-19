@@ -18,7 +18,7 @@ defmodule Pachinko.Server.Supervisor do
     server =
       Pachinko.Server
       |> worker([max_ball_spread])
-      
+
     sup_pid
     |> Supervisor.start_child(server)
   end
