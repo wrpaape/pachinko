@@ -30,7 +30,8 @@ defmodule Pachinko.Server do
       |> generate_buckets
 
     dead_and_nil_balls =
-      max_ball_spread + 1
+      max_ball_spread
+      |> + 1
       |> generate_balls
 
     initial_state =
@@ -60,13 +61,13 @@ defmodule Pachinko.Server do
 
   # last of dead balls are dropped, the empty list will be dropped
   # :update is called again to retreive a reply with next_state
-  def handle_call(:update, from, {[], live_balls, nil, buckets}) do
-    handle_call(:update, from, {live_balls, nil, buckets})
+  def handle_call(:update, from, {[], live_balls, nil, buckets, 0}) do
+    handle_call(:update, from, {live_balls, nil, buckets, 0})
   end
 
   # balls are dropped into play one at a time
   # buckets are still out of reach
-  def handle_call(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets}) do
+  def handle_call(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets, 0}) do
     {live_balls, nil_balls} =
       live_and_nil_balls
       |> Enum.split_while(& &1)
@@ -74,7 +75,7 @@ defmodule Pachinko.Server do
     next_balls =
       [live_ball | shift(live_balls) ++ Enum.drop(nil_balls, 1)]
 
-    {dead_balls, next_balls, nil, buckets}
+    {dead_balls, next_balls, nil, buckets, 0}
     |> reply_state
   end
 
@@ -85,13 +86,30 @@ defmodule Pachinko.Server do
   ######################################################################
 
   defp update_count(buckets, bucket_ball) do
-    buckets
-    |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
-      case remainder do
-        7 -> {count + 1, full_blocks + 1, 0}
-        _ -> {count + 1, full_blocks, remainder + 1}
+    {count, full_blocks, remainder} =
+      buckets[bucket_ball]
+
+    count = count + 1
+    remainder = remainder + 1
+
+    if remainder == 8 do
+      remainder = 0
+      full_blocks = full_blocks + 1
+      if full_blocks > buckets.max_full_blocks do
+        buckets =
+          buckets
+          |> Map.put(:max_full_blocks, full_blocks)
       end
-    end)
+    end
+
+    buckets
+    |> Map.put(bucket_ball, {cunt, full_blocks, remainder})
+    # |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
+    #   case remainder do
+    #     7 -> {count + 1, full_blocks + 1, 0            }
+    #     _ -> {count + 1, full_blocks    , remainder + 1}
+    #   end
+    # end)
   end
 
   defp call(msg) do
@@ -101,15 +119,15 @@ defmodule Pachinko.Server do
 
   # do not include dead_balls in reply
   defp reply_state(state = {_live_balls, _bucket_ball, _buckets}) do 
-    {:reply, state |> format, state}
+    {:reply, state |> format_reply, state}
   end
 
   defp reply_state(drop_state) do 
-    {:reply, drop_state |> Tuple.delete_at(0) |> format, drop_state}
+    {:reply, drop_state |> Tuple.delete_at(0) |> format_reply, drop_state}
   end
 
   # send buckets as two rows of sorted keyword lists
-  defp format({live_balls, bucket_ball, buckets}) do
+  defp format_reply({live_balls, bucket_ball, buckets}) do
     {live_balls, bucket_ball, buckets |> Enum.sort}
   end
 
@@ -117,7 +135,8 @@ defmodule Pachinko.Server do
     max_ball_spread
     |> Pachinko.reflect_stagger
     |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
-    |> Enum.into(%{})
+    |> Enum.into(Map.new)
+    |> Map.put_new(:max_full_blocks, 0)
   end
 
   defp generate_balls(num_balls) do

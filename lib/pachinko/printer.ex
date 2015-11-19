@@ -72,6 +72,10 @@ defmodule Pachinko.Printer do
       max_ball_spread
       |> generate_counter_pieces
 
+    y_overflow =
+      max_ball_spread
+      |> + 1
+
     initial_state =
       {peg_rows, counter_pieces, top_pad}
 
@@ -100,9 +104,9 @@ defmodule Pachinko.Printer do
     main = 
       peg_rows
       |> Enum.zip(balls)
-      |> Enum.map_join("\n", &print_row(&1, buckets))
+      |> Enum.map_join("\n", &print_row(&1, buckets)
 
-    top_pad <> main <> "\n" <> counters
+    IO.ANSI.white <> top_pad <> main <> "\n" <> counters
     |> IO.puts 
   end
 
