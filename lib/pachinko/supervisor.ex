@@ -14,22 +14,22 @@ defmodule Pachinko.Supervisor do
 
   def start_workers(sup_pid, spread_and_pad = {max_ball_spread, _top_pad}) do
     # Start the server
-    server =
-      Pachinko.Server
-      |> supervisor([max_ball_spread])
+    printer =
+      Pachinko.Printer
+      |> supervisor([spread_and_pad])
 
-    {:ok, _server_pid} =
+    {:ok, _printer_pid} =
       sup_pid
-      |> Supervisor.start_child(server)
+      |> Supervisor.start_child(printer)
 
-    # and then the subsupervisor for the printer
-    printer_sup =
-      Pachinko.Printer.Supervisor
-      |> worker([spread_and_pad])
+    # and then the subsupervisor for the server
+    server_sup =
+      Pachinko.Server.Supervisor
+      |> worker([max_ball_spread])
 
-    {:ok, _printer_sup_pid} =
+    {:ok, _server_sup_pid} =
       sup_pid
-      |> Supervisor.start_child(printer_sup)
+      |> Supervisor.start_child(server_sup)
   end
 
   def init(_args) do
