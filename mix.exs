@@ -5,7 +5,7 @@ defmodule Pachinko.Mixfile do
     [app: :pachinko,
      version: "0.0.1",
      elixir: "~> 1.1",
-     # escript: escript_config,
+     escript: escript_config,
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps]
@@ -49,32 +49,23 @@ defmodule Pachinko.Mixfile do
   defp fetch_spread_and_pad!(_env) do
     [rows, columns] = fetch_dims!
     
+    max_height =
+      rows
+      |> - 6
+
     max_ball_spread = 
       columns
+      |> - 1
       |> div(2)
-      |> + 1
+      |> - 2
       |> div(2)
-      |> - 3
+      |> min(max_height)
 
     top_pad_len =
-      rows
+      max_height
       |> - max_ball_spread
-      |> - 3
 
     { max_ball_spread, String.duplicate("\n", top_pad_len) }
-  end
-  
-  defp to_whole_microseconds(seconds_per_frame) do
-    seconds_per_frame * 1000
-    |> Float.ceil
-    |> trunc
-  end
-  
-  defp fetch_frame_interval! do
-    :pachinko
-    |> Application.get_env(:frame_rate)
-    |> :math.pow(-1) 
-    |> to_whole_microseconds
   end
 
   defp fetch_args! do
@@ -82,5 +73,11 @@ defmodule Pachinko.Mixfile do
     |> fetch_spread_and_pad!
     |> List.wrap
     |> Enum.concat(fetch_frame_interval! |> List.wrap)
+  end
+
+  defp escript_config do
+    [
+      main_module: Pachinko.CLI
+    ]
   end
 end

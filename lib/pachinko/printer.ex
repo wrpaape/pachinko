@@ -117,7 +117,7 @@ defmodule Pachinko.Printer do
       |> Enum.zip(balls)
       |> Enum.map_join("\n", &print_row(&1, buckets))
 
-    IO.ANSI.white <> top_pad <> main <> "\n" <> counters
+    top_pad <> main <> "\n" <> counters
     |> IO.puts 
   end
 
@@ -138,7 +138,7 @@ defmodule Pachinko.Printer do
       |> Tuple.to_list
       |> Enum.map_join("\n", &print_counter_row/1)
 
-    "├" <> printed_top <> "┤\n  " <> IO.ANSI.green <> printed_counts <> IO.ANSI.white <> "\n" <> base
+    "├" <> printed_top <> "┤\n  " <> IO.ANSI.green <> printed_counts <>  "\n" <> base
   end
 
   def print_counter_row(bucket_row) do
@@ -149,15 +149,15 @@ defmodule Pachinko.Printer do
       |> Integer.to_string
 
       case byte_size(count_str) do
-        1 -> " " <> IO.ANSI.faint <> count_str <> IO.ANSI.normal <> " "
-        2 -> " " <>                  count_str
-        _ ->       IO.ANSI.bright <> count_str <> IO.ANSI.normal
+        1 -> " " <> count_str <> " "
+        2 -> " " <> count_str
+        _ ->        count_str
       end
     end)
   end
 
   def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, buckets) do
-    pad <> slot_row(slots, ball_pos, ".") <> pad <> bell_curve_row(y_row, row_color, buckets)
+    pad <> "╱" <> slot_row(slots, ball_pos, ".") <> "╲" <> pad <> bell_curve_row(y_row, row_color, buckets) <> IO.ANSI.normal <> IO.ANSI.white
   end
 
   def generate_counter_pieces(max_ball_spread) do
@@ -170,8 +170,8 @@ defmodule Pachinko.Printer do
       |> List.duplicate(max_ball_spread + 1)
       |> Enum.join("┴")
 
-    {mouths, "└" <> base <> "┘"}
-
+    {mouths, IO.ANSI.white <> "└" <> base <> "┘"}
+# ╱
 # ├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
 # │0│0│0│0│0│   
 # └─┴─┴─┴─┴─┘
@@ -180,7 +180,7 @@ defmodule Pachinko.Printer do
   def generate_peg_row({y_row, num_pegs}, y_overflow) do
     pad =
       " "
-      |> String.duplicate(y_row + 1)
+      |> String.duplicate(y_row)
 
     slots =
       num_pegs
@@ -190,12 +190,12 @@ defmodule Pachinko.Printer do
 
     row_color =
       cond do
-        y_ratio > 0.85 -> IO.ANSI.magenta
-        y_ratio > 0.70 -> IO.ANSI.red
-        y_ratio > 0.55 -> IO.ANSI.yellow
-        y_ratio > 0.40 -> IO.ANSI.green  
-        y_ratio > 0.20 -> IO.ANSI.cyan
-        true           -> IO.ANSI.blue
+        y_ratio > 0.85 -> IO.ANSI.bright <> IO.ANSI.magenta
+        y_ratio > 0.70 -> IO.ANSI.bright <> IO.ANSI.red
+        y_ratio > 0.55 ->                   IO.ANSI.yellow
+        y_ratio > 0.40 ->                   IO.ANSI.green  
+        y_ratio > 0.20 -> IO.ANSI.faint  <> IO.ANSI.cyan
+        true           -> IO.ANSI.faint  <> IO.ANSI.blue
       end
 
     {[pad | slots], y_row, row_color}
@@ -214,7 +214,7 @@ defmodule Pachinko.Printer do
         |> String.duplicate(2)
       end)
     
-    row_color <> row <> IO.ANSI.white
+    row_color <> row
   end
 
   @doc """
@@ -235,7 +235,7 @@ defmodule Pachinko.Printer do
   def slot_row(slots, ball_pos, token) do
     slots
     |> Enum.map_join(token, fn(slot_pos) ->
-      if slot_pos == ball_pos, do: IO.ANSI.red <> "●" <> IO.ANSI.white, else: " "
+      if slot_pos == ball_pos, do: IO.ANSI.bright <> IO.ANSI.yellow <> "☻" <> IO.ANSI.normal <> IO.ANSI.white, else: " "
     end)
   end
 
