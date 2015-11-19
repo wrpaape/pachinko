@@ -16,9 +16,9 @@ defmodule Pachinko.Server do
     |> GenServer.start_link(max_ball_spread, name: __MODULE__)
   end
 
-  def state, do: call(:state)
+  def state, do: __MODULE__ |> GenServer.call(:state)
 
-  def update, do: call(:update)
+  def update, do: __MODULE__ |> GenServer.cast(:update)
 
   ########################################################################
   #                       GenServer implementation                       #
@@ -43,7 +43,7 @@ defmodule Pachinko.Server do
 
   # all balls are live
   # one ball drops into a bucket (dead) and is replaced by a new ball
-  def handle_call(:update, _from, {live_balls, _last_bucket_ball, buckets}) do
+  def handle_cast(:update, _from, {live_balls, _last_bucket_ball, buckets}) do
     {live_balls, [bucket_ball]} =
       live_balls
       |> Enum.split(-1)
@@ -55,19 +55,18 @@ defmodule Pachinko.Server do
       buckets
       |> update_count(bucket_ball)
       
-    {next_balls, bucket_ball, next_buckets}
-    |> reply_state   
+    { :noreply, {next_balls, bucket_ball, next_buckets} }
   end
 
   # last of dead balls are dropped, the empty list will be dropped
-  # :update is called again to retreive a reply with next_state
-  def handle_call(:update, from, {[], live_balls, nil, buckets, 0}) do
-    handle_call(:update, from, {live_balls, nil, buckets, 0})
+  # :update is casted again to retreive a reply with next_state
+  def handle_cast(:update, from, {[], live_balls, nil, buckets}) do
+    handle_cast(:update, from, {live_balls, nil, buckets})
   end
 
   # balls are dropped into play one at a time
   # buckets are still out of reach
-  def handle_call(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets, 0}) do
+  def handle_cast(:update, _from, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets}) do
     {live_balls, nil_balls} =
       live_and_nil_balls
       |> Enum.split_while(& &1)
@@ -75,8 +74,7 @@ defmodule Pachinko.Server do
     next_balls =
       [live_ball | shift(live_balls) ++ Enum.drop(nil_balls, 1)]
 
-    {dead_balls, next_balls, nil, buckets, 0}
-    |> reply_state
+    { :noreply, {dead_balls, next_balls, nil, buckets} }
   end
 
   def handle_call(:state, _from, state), do: reply_state(state)
@@ -103,18 +101,7 @@ defmodule Pachinko.Server do
     end
 
     buckets
-    |> Map.put(bucket_ball, {cunt, full_blocks, remainder})
-    # |> Map.update!(bucket_ball, fn({count, full_blocks, remainder}) ->
-    #   case remainder do
-    #     7 -> {count + 1, full_blocks + 1, 0            }
-    #     _ -> {count + 1, full_blocks    , remainder + 1}
-    #   end
-    # end)
-  end
-
-  defp call(msg) do
-    __MODULE__
-    |> GenServer.call(msg)
+    |> Map.put(bucket_ball, {count, full_blocks, remainder})
   end
 
   # do not include dead_balls in reply
@@ -128,7 +115,12 @@ defmodule Pachinko.Server do
 
   # send buckets as two rows of sorted keyword lists
   defp format_reply({live_balls, bucket_ball, buckets}) do
-    {live_balls, bucket_ball, buckets |> Enum.sort}
+
+    {max_full_blocks, buckets} =
+      buckets
+      |> Map.pop(:max_full_blocks)
+
+    {live_balls, bucket_ball, buckets |> Enum.sort, max_full_blocks}
   end
 
   defp generate_buckets(max_ball_spread) do

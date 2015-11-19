@@ -49,7 +49,8 @@ defmodule Pachinko.Printer do
 
   def start(frame_interval) do
     {:ok, {:interval, _ref}} = 
-      frame_interval
+      # frame_interval
+      15
       |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
   end
 
@@ -77,17 +78,27 @@ defmodule Pachinko.Printer do
       |> + 1
 
     initial_state =
-      {peg_rows, counter_pieces, top_pad}
+      {peg_rows, counter_pieces, top_pad, y_overflow}
 
     {:ok, initial_state}
   end
 
-  def handle_cast(:print, state) do
+  def handle_cast(:print, printer_state = {_, _, _, y_overflow}) do
     # 800~3500 μs (~10_000 max)to process cast
-    Pachinko.Server.update
-    |> print(state)
+    server_state =
+      {_, _, _, max_full_blocks} =
+        Pachinko.Server.state
 
-    {:noreply, state}    
+    if max_full_blocks >= y_overflow do
+      :timer.sleep(1000)
+    else
+      Pachinko.Server.update
+
+      server_state
+      |> print(printer_state)
+    end        
+
+    {:noreply, printer_state}    
   end
 
   def handle_call(:state, _from, state), do: {:reply, state, state}
@@ -96,7 +107,7 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bucket_ball, buckets}, {peg_rows, counter_pieces, top_pad}) do
+  def print({balls, bucket_ball, buckets, _max_full_blocks}, {peg_rows, counter_pieces, top_pad, _y_overflow}) do
     counters =
       counter_pieces
       |> print_counters(bucket_ball, buckets)
@@ -104,7 +115,7 @@ defmodule Pachinko.Printer do
     main = 
       peg_rows
       |> Enum.zip(balls)
-      |> Enum.map_join("\n", &print_row(&1, buckets)
+      |> Enum.map_join("\n", &print_row(&1, buckets))
 
     IO.ANSI.white <> top_pad <> main <> "\n" <> counters
     |> IO.puts 
@@ -121,7 +132,8 @@ defmodule Pachinko.Printer do
       buckets
       |> Enum.with_index
       |> Enum.partition(fn({_bucket, row_index}) ->
-        row_index |> Integer.is_odd
+        row_index
+        |> Integer.is_odd
       end)
       |> Tuple.to_list
       |> Enum.map_join("\n", &print_counter_row/1)
@@ -131,7 +143,7 @@ defmodule Pachinko.Printer do
 
   def print_counter_row(bucket_row) do
     bucket_row
-    |> Enum.map_join(" ", fn({{_pos, {count, _full_blocks, _remainder}}, _row_index}) ->
+    |> Enum.map_join(" ", fn({{_slot_pos, {count, _full_blocks, _remainder}}, _row_index}) ->
       count_str = 
       count
       |> Integer.to_string
