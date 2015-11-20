@@ -124,7 +124,9 @@ defmodule Pachinko.Server do
       buckets
       |> Map.pop(:max_full_blocks)
 
-    {live_balls, bucket_ball, buckets |> Enum.sort, max_full_blocks}
+    drop_keys = [:max_full_blocks, :]
+
+    {live_balls, bucket_ball, buckets Map.drop([:max_full_blocks]) |> Enum.sort, max_full_blocks}
   end
 
   defp generate_buckets(max_ball_spread) do
@@ -132,6 +134,10 @@ defmodule Pachinko.Server do
     |> Pachinko.reflect_stagger
     |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
     |> Enum.into(Map.new)
+    |> Enum.into([:counts])
+    |> List.to_tuple
+    |> List.wrap
+    |> Map.put_new({:total, 0})
     |> Map.put_new(:max_full_blocks, 0)
   end
 

@@ -1,38 +1,8 @@
 defmodule Pachinko.Printer do
   use GenServer
 
-  # import IO.ANSI, only:
-  # [
-  #   magenta: 0,
-  #   red: 0,
-  #   yellow: 0,
-  #   green: 0,
-  #   cyan: 0,
-  #   blue: 0,
-  #   white: 0
-  # ]
-
-  @ansi
-    ~w(faint normal bright)a
-    |> Enum.map(fn(intensity) -> 
-      ~w(white magenta red yellow green cyan blue)a
-      |> Enum.map(fn(color) ->
-        [intensity, color]
-        |> Enum.map_join(fn(ansi_fun) ->
-          apply(IO.ANSI, ansi_fun, [])
-        end)
-        |> List.wrap
-        |> List.to_tuple
-        |> Tuple.insert_at(0, color)
-      end)
-      |> Enum.into(Map.new)
-      |> 
-      |> List.wrap
-      |> List.to_tuple
-      |> Tuple.insert_at(0, intensity)
-    end)
-    |> Enum.into(Map.new)
-
+  @int_color_default      IO.ANSI.normal <> IO.ANSI.white
+  @int_color_ball         IO.ANSI.bright <> IO.ANSI.yellow
 
   @moduledoc """
   Prints Pachinko state to stdio.
@@ -180,7 +150,7 @@ defmodule Pachinko.Printer do
       |> Tuple.to_list
       |> Enum.map_join("\n", &print_counter_row/1)
 
-    "├" <> printed_top <> "┤\n  " <> @ansi.normal.green <> printed_counts <>  "\n" <> base
+    "├" <> printed_top <> "┤\n  " <> IO.ANSI.green <> printed_counts <> "\n" <> base
   end
 
   def print_counter_row(bucket_row) do
@@ -199,7 +169,7 @@ defmodule Pachinko.Printer do
   end
 
   def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, buckets) do
-    pad <> "╱" <> slot_row(slots, ball_pos, ".") <> "╲" <> pad <> bell_curve_row(y_row, row_color, buckets) <> @ansi.normal.white
+    pad <> "╱" <> slot_row(slots, ball_pos, ".") <> "╲" <> pad <> bell_curve_row(y_row, row_color, buckets) <> @int_color_default
   end
 
   def generate_counter_pieces(max_ball_spread) do
@@ -277,7 +247,7 @@ defmodule Pachinko.Printer do
   def slot_row(slots, ball_pos, token) do
     slots
     |> Enum.map_join(token, fn(slot_pos) ->
-      if slot_pos == ball_pos, do: IO.ANSI.bright <> IO.ANSI.yellow <> "☻" <> IO.ANSI.normal <> IO.ANSI.white, else: " "
+      if slot_pos == ball_pos, do: @int_color_ball <> "☻" <> @int_color_default, else: " "
     end)
   end
 
