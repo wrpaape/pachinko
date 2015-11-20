@@ -47,10 +47,21 @@ defmodule Pachinko.Printer do
       |> GenServer.start_link([spread_pad], name: __MODULE__)
   end
 
+  def main([]) do
+    fetch_frame_interval!
+    |> start
+  end
+
   def start(frame_interval) do
-    {:ok, {:interval, _ref}} = 
-      frame_interval
-      |> :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
+    
+    # :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
+    __MODULE__
+    |> GenServer.call(:next_frame)
+    |> IO.puts
+
+    :timer.sleep frame_interval
+
+    start(frame_interval)
   end
 
   def state, do: __MODULE__ |> GenServer.call(:state)
@@ -83,7 +94,7 @@ defmodule Pachinko.Printer do
     {:ok, initial_state}
   end
 
-  def handle_cast(:print, printer_state = {_, _, _, y_overflow}) do
+  def handle_call(:next_frame, _from, printer_state = {_, _, _, y_overflow}) do
     # 800~3500 μs (~10_000 max)to process cast
     server_state =
       {_, _, _, max_full_blocks} =
@@ -94,11 +105,13 @@ defmodule Pachinko.Printer do
     else
       Pachinko.Server.update
 
+    end
+
+    next_frame =       
       server_state
       |> print(printer_state)
-    end        
 
-    {:noreply, printer_state}    
+    {:reply, next_frame, printer_state}  
   end
 
   def handle_call(:state, _from, state), do: {:reply, state, state}
@@ -118,7 +131,6 @@ defmodule Pachinko.Printer do
       |> Enum.map_join("\n", &print_row(&1, buckets))
 
     top_pad <> main <> "\n" <> counters
-    |> IO.puts 
   end
 
   def print_counters({mouths, base}, bucket_ball, buckets) do
@@ -237,6 +249,19 @@ defmodule Pachinko.Printer do
     |> Enum.map_join(token, fn(slot_pos) ->
       if slot_pos == ball_pos, do: IO.ANSI.bright <> IO.ANSI.yellow <> "☻" <> IO.ANSI.normal <> IO.ANSI.white, else: " "
     end)
+  end
+
+  defp to_whole_microseconds(seconds_per_frame) do
+    seconds_per_frame * 1000
+    |> Float.ceil
+    |> trunc
+  end
+
+  defp fetch_frame_interval! do
+    :pachinko
+    |> Application.get_env(:frame_rate)
+    |> :math.pow(-1) 
+    |> to_whole_microseconds
   end
 
   # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string

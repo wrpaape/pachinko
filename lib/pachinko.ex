@@ -4,24 +4,17 @@ defmodule Pachinko do
   # See http://elixir-lang.org/docs/stable/elixir/Application.html
   # for more information on OTP Applications
 
-  def start(_type, [spread_and_pad]) do
+  def start(_type, _args) do
     import Supervisor.Spec, warn: false
-
-    # ok_sup_pid = 
-      {:ok, _sup_pid} =
-        spread_and_pad
-        |> Pachinko.Supervisor.start_link
     
-    # frame_interval
-    # |> Pachinko.Printer.start
-
-    # ok_sup_pid
+    {:ok, _sup_pid} =
+      fetch_spread_and_pad!
+      |> Pachinko.Supervisor.start_link
   end
 
-  def main do
-    fetch_frame_interval!
-    |> Pachinko.Printer.start
-  end
+  # def main([]) do
+  #   Pachinko.Printer.start
+  # end
 
   def reflect_stagger(max), do: -max..max |> Enum.take_every(2)
 
@@ -31,10 +24,36 @@ defmodule Pachinko do
     |> trunc
   end
 
-  defp fetch_frame_interval! do
-    :pachinko
-    |> Application.get_env(:frame_rate)
-    |> :math.pow(-1) 
-    |> to_whole_microseconds
+  defp fetch!({:ok, result}), do: result
+  defp fetch_dims! do
+    [:rows, :columns]
+    |> Enum.map(fn(dim) ->
+      :io
+      |> apply(dim, [])
+      |> fetch!
+    end)
+  end
+
+  # defp fetch_spread_and_pad!(:test), do: {1, 0}
+  defp fetch_spread_and_pad! do
+    [rows, columns] = fetch_dims!
+    
+    max_height =
+      rows
+      |> - 6
+
+    max_ball_spread = 
+      columns
+      |> - 1
+      |> div(2)
+      |> - 2
+      |> div(2)
+      |> min(max_height)
+
+    top_pad_len =
+      max_height
+      |> - max_ball_spread
+
+    { max_ball_spread, String.duplicate("\n", top_pad_len) }
   end
 end

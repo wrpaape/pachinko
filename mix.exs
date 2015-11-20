@@ -17,7 +17,7 @@ defmodule Pachinko.Mixfile do
   def application do
     [
       applications: [:logger],
-      mod: {Pachinko, fetch_args!},
+      mod: {Pachinko, []},
       registered: [Pachinko.Server, Pachinko.Printer]
     ]
   end
@@ -35,49 +35,9 @@ defmodule Pachinko.Mixfile do
     []
   end
 
-  defp fetch!({:ok, result}), do: result
-  defp fetch_dims! do
-    [:rows, :columns]
-    |> Enum.map(fn(dim) ->
-      :io
-      |> apply(dim, [])
-      |> fetch!
-    end)
-  end
-
-  defp fetch_spread_and_pad!(:test), do: {1, 0}
-  defp fetch_spread_and_pad!(_env) do
-    [rows, columns] = fetch_dims!
-    
-    max_height =
-      rows
-      |> - 6
-
-    max_ball_spread = 
-      columns
-      |> - 1
-      |> div(2)
-      |> - 2
-      |> div(2)
-      |> min(max_height)
-
-    top_pad_len =
-      max_height
-      |> - max_ball_spread
-
-    { max_ball_spread, String.duplicate("\n", top_pad_len) }
-  end
-
-  defp fetch_args! do
-    Mix.env
-    |> fetch_spread_and_pad!
-    |> List.wrap
-    |> Enum.concat(fetch_frame_interval! |> List.wrap)
-  end
-
   defp escript_config do
     [
-      main_module: Pachinko.CLI
+      main_module: Pachinko.Printer
     ]
   end
 end
