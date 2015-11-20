@@ -57,7 +57,7 @@ defmodule Pachinko.Server do
 
     next_buckets =
       buckets
-      |> update_count(bucket_ball)
+      |> update_buckets(bucket_ball)
       
     { :noreply, {next_balls, bucket_ball, next_buckets} }
   end
@@ -87,9 +87,9 @@ defmodule Pachinko.Server do
   #                          private helpers                           #
   ######################################################################
 
-  defp update_count(buckets, bucket_ball) do
+  defp update_buckets(buckets, bucket_ball) do
     {count, full_blocks, remainder} =
-      buckets[bucket_ball]
+      buckets.counts[bucket_ball]
 
     count = count + 1
     remainder = remainder + 1
@@ -105,7 +105,8 @@ defmodule Pachinko.Server do
     end
 
     buckets
-    |> Map.put(bucket_ball, {count, full_blocks, remainder})
+    |> put_in([:counts, bucket_ball], {count, full_blocks, remainder})
+    |> Map.update!(:total_count, &(&1 + 1))
   end
 
   # do not include dead_balls in reply
@@ -117,16 +118,13 @@ defmodule Pachinko.Server do
     {:reply, drop_state |> Tuple.delete_at(0) |> format_reply, drop_state}
   end
 
-  # send buckets as two rows of sorted keyword lists
   defp format_reply({live_balls, bucket_ball, buckets}) do
 
-    {max_full_blocks, buckets} =
+    {specific_counts, general_counts} =
       buckets
-      |> Map.pop(:max_full_blocks)
+      |> Map.pop(:counts)
 
-    drop_keys = [:max_full_blocks, :]
-
-    {live_balls, bucket_ball, buckets Map.drop([:max_full_blocks]) |> Enum.sort, max_full_blocks}
+    {live_balls, bucket_ball, specific_counts |> Enum.sort, general_counts}
   end
 
   defp generate_buckets(max_ball_spread) do
@@ -134,11 +132,13 @@ defmodule Pachinko.Server do
     |> Pachinko.reflect_stagger
     |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
     |> Enum.into(Map.new)
-    |> Enum.into([:counts])
+    |> List.wrap
+    |> List.insert_at(0, :counts)
     |> List.to_tuple
     |> List.wrap
-    |> Map.put_new({:total, 0})
-    |> Map.put_new(:max_full_blocks, 0)
+    |> Keyword.put_new(:total_count, 0)
+    |> Keyword.put_new(:max_full_blocks, 0)
+    |> Enum.into(Map.new)
   end
 
   defp generate_balls(num_balls) do
@@ -148,19 +148,12 @@ defmodule Pachinko.Server do
     |> Tuple.append(nil)
   end
 
-  defp flip_coin do
-    rand = :rand.uniform
-    cond do
-      rand > 0.5 -> :heads
-      rand < 0.5 -> :tails
-      true       -> flip_coin
-    end
-  end
-
   defp shift(balls) do
     balls
     |> Enum.map(fn(pos) ->
-      pos + if flip_coin == :heads, do: 1, else: -1
+      [-1, 1]
+      |> Enum.random
+      |> + pos
     end)
   end
 end

@@ -16,6 +16,9 @@ defmodule Pachinko.Printer do
 # slots [ , , , ]
 # . . . . .
 # . . . . .
+# 
+# 
+#
 #      ●    
 #     ●.       1|4  ball_pos: -1 , pegs: [0]            slots = %{-1: " ", 1: " "}
 #     .●.      2|3  ball_pos:  0 , pegs: [-1, 1]        slots = %{-2: " ", 0: " ", 2: " "}
@@ -101,7 +104,7 @@ defmodule Pachinko.Printer do
   def handle_call(:print_frame, _from, printer_state = {_, _, _, y_overflow}) do
     # 800~3500 μs (~10_000 max)to process cast
     server_state =
-      {_, _, _, max_full_blocks} =
+      { _, _, _, %{max_full_blocks: max_full_blocks} } =
         Pachinko.Server.state
 
     if max_full_blocks >= y_overflow, do: Pachinko.Server.restart, else: Pachinko.Server.update
@@ -119,21 +122,22 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bucket_ball, buckets, _max_full_blocks}, {peg_rows, counter_pieces, top_pad, _y_overflow}) do
+  def print({balls, bucket_ball, specific_counts, %{total_count: total_count}}, {peg_rows, counter_pieces, top_pad, _y_overflow}) do
     counters =
       counter_pieces
-      |> print_counters(bucket_ball, buckets)
+      |> print_counters(bucket_ball, specific_counts)
 
     main = 
       peg_rows
       |> Enum.zip(balls)
-      |> Enum.map_join("\n", &print_row(&1, buckets))
+      |> Enum.map_join("\n", &print_row(&1, specific_counts))
 
     top_pad <> main <> "\n" <> counters
-    |> IO.puts
+    # |> IO.puts
+    IO.puts total_count
   end
 
-  def print_counters({mouths, base}, bucket_ball, buckets) do
+  def print_counters({mouths, base}, bucket_ball, specific_counts) do
     require Integer
 
     printed_top =
@@ -141,7 +145,7 @@ defmodule Pachinko.Printer do
       |> slot_row(bucket_ball, "┼")
 
     printed_counts =
-      buckets
+      specific_counts
       |> Enum.with_index
       |> Enum.partition(fn({_bucket, row_index}) ->
         row_index
@@ -168,8 +172,8 @@ defmodule Pachinko.Printer do
     end)
   end
 
-  def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, buckets) do
-    pad <> "╱" <> slot_row(slots, ball_pos, ".") <> "╲" <> pad <> bell_curve_row(y_row, row_color, buckets) <> @int_color_default
+  def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, specific_counts) do
+    pad <> "╱" <> slot_row(slots, ball_pos, ".") <> "╲" <> pad <> bell_curve_row(y_row, row_color, specific_counts) <> @int_color_default
   end
 
   def generate_counter_pieces(max_ball_spread) do
@@ -213,9 +217,9 @@ defmodule Pachinko.Printer do
     {[pad | slots], y_row, row_color}
   end
 
-  def bell_curve_row(y_row, row_color, buckets) do
+  def bell_curve_row(y_row, row_color, specific_counts) do
     row =
-      buckets
+      specific_counts
       |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
         cond do
           full_blocks < y_row -> " "
