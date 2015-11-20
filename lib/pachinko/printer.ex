@@ -53,13 +53,16 @@ defmodule Pachinko.Printer do
   end
 
   def start(frame_interval) do
-    
-    # :timer.apply_interval(GenServer, :cast, [__MODULE__, :print])
-    __MODULE__
-    |> GenServer.call(:next_frame)
-    |> IO.puts
+    {time_exec, next_frame} =
+      GenServer
+      |> :timer.tc(:call, [__MODULE__, :next_frame])
 
-    :timer.sleep frame_interval
+    IO.puts next_frame
+
+    frame_interval
+    |> - (time_exec / 1000)
+    |> trunc
+    |> :timer.sleep
 
     start(frame_interval)
   end
@@ -100,12 +103,7 @@ defmodule Pachinko.Printer do
       {_, _, _, max_full_blocks} =
         Pachinko.Server.state
 
-    if max_full_blocks >= y_overflow do
-      Pachinko.Server.restart
-    else
-      Pachinko.Server.update
-
-    end
+    if max_full_blocks >= y_overflow, do: Pachinko.Server.restart, else: Pachinko.Server.update
 
     next_frame =       
       server_state

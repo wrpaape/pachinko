@@ -12,10 +12,6 @@ defmodule Pachinko do
       |> Pachinko.Supervisor.start_link
   end
 
-  # def main([]) do
-  #   Pachinko.Printer.start
-  # end
-
   def reflect_stagger(max), do: -max..max |> Enum.take_every(2)
 
   defp to_whole_microseconds(seconds_per_frame) do
