@@ -1,6 +1,39 @@
 defmodule Pachinko.Printer do
   use GenServer
 
+  # import IO.ANSI, only:
+  # [
+  #   magenta: 0,
+  #   red: 0,
+  #   yellow: 0,
+  #   green: 0,
+  #   cyan: 0,
+  #   blue: 0,
+  #   white: 0
+  # ]
+
+  @ansi
+    ~w(faint normal bright)a
+    |> Enum.map(fn(intensity) -> 
+      ~w(white magenta red yellow green cyan blue)a
+      |> Enum.map(fn(color) ->
+        [intensity, color]
+        |> Enum.map_join(fn(ansi_fun) ->
+          apply(IO.ANSI, ansi_fun, [])
+        end)
+        |> List.wrap
+        |> List.to_tuple
+        |> Tuple.insert_at(0, color)
+      end)
+      |> Enum.into(Map.new)
+      |> 
+      |> List.wrap
+      |> List.to_tuple
+      |> Tuple.insert_at(0, intensity)
+    end)
+    |> Enum.into(Map.new)
+
+
   @moduledoc """
   Prints Pachinko state to stdio.
   """
@@ -53,11 +86,9 @@ defmodule Pachinko.Printer do
   end
 
   def start(frame_interval) do
-    {time_exec, next_frame} =
+    {time_exec, :ready} =
       GenServer
-      |> :timer.tc(:call, [__MODULE__, :next_frame])
-
-    IO.puts next_frame
+      |> :timer.tc(:call, [__MODULE__, :print_frame])
 
     frame_interval
     |> - (time_exec / 1000)
@@ -97,7 +128,7 @@ defmodule Pachinko.Printer do
     {:ok, initial_state}
   end
 
-  def handle_call(:next_frame, _from, printer_state = {_, _, _, y_overflow}) do
+  def handle_call(:print_frame, _from, printer_state = {_, _, _, y_overflow}) do
     # 800~3500 μs (~10_000 max)to process cast
     server_state =
       {_, _, _, max_full_blocks} =
@@ -109,7 +140,7 @@ defmodule Pachinko.Printer do
       server_state
       |> print(printer_state)
 
-    {:reply, next_frame, printer_state}  
+    {:reply, :ready, printer_state}  
   end
 
   def handle_call(:state, _from, state), do: {:reply, state, state}
@@ -129,6 +160,7 @@ defmodule Pachinko.Printer do
       |> Enum.map_join("\n", &print_row(&1, buckets))
 
     top_pad <> main <> "\n" <> counters
+    |> IO.puts
   end
 
   def print_counters({mouths, base}, bucket_ball, buckets) do
@@ -148,7 +180,7 @@ defmodule Pachinko.Printer do
       |> Tuple.to_list
       |> Enum.map_join("\n", &print_counter_row/1)
 
-    "├" <> printed_top <> "┤\n  " <> IO.ANSI.green <> printed_counts <>  "\n" <> base
+    "├" <> printed_top <> "┤\n  " <> @ansi.normal.green <> printed_counts <>  "\n" <> base
   end
 
   def print_counter_row(bucket_row) do
@@ -167,7 +199,7 @@ defmodule Pachinko.Printer do
   end
 
   def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, buckets) do
-    pad <> "╱" <> slot_row(slots, ball_pos, ".") <> "╲" <> pad <> bell_curve_row(y_row, row_color, buckets) <> IO.ANSI.normal <> IO.ANSI.white
+    pad <> "╱" <> slot_row(slots, ball_pos, ".") <> "╲" <> pad <> bell_curve_row(y_row, row_color, buckets) <> @ansi.normal.white
   end
 
   def generate_counter_pieces(max_ball_spread) do
@@ -261,32 +293,4 @@ defmodule Pachinko.Printer do
     |> :math.pow(-1) 
     |> to_whole_microseconds
   end
-
-  # defp blocks, do: 9601..9608 |> Enum.to_list |> to_string
-
-  # defp pad(len), do: String.duplicate(" ", len)
-  # defp pegs(num_pegs), do: String.duplicate(" .", num_pegs)
-  # defp blank_row(len, row), do: pad(len) <> pegs(row)
-  # defp blank_body(num_rows) do
-  #   1..num_rows
-  #   |> Enum.map_join("\n", &blank_row(num_rows - &1 + 1, &1))
-  # end
-
-  # # defp crosses(num_crosses), do: String.duplicate(" ┼", num_crosses)
-  # defp heads(num_buckets), do: "├" <> crosses(num_buckets) <> " ┤"
-  # # defp counters(counts), do: 
-  # defp blank_buckets(num_buckets), do:
-
-  #   heads(num_buckets) <> counters(num_buckets) <> bases(num_buckets)
-  # end
-
-  # def test do
-  #   # rows = Fetch.dim(:rows)
-  #   cols        = Fetch.dim(:cols)
-  #   num_buckets = cols / 2 |> Float.ceil |> trunc
-  #   num_rows    = num_buckets - 1
-    
-  #   body = num_rows |> blank_body
-  #   buckets = num_buckets |> blank_buckets
-  # end
 end
