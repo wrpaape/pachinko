@@ -252,7 +252,7 @@ defmodule Pachinko.Printer do
       resolution * std_buckets / n
 
     std_max =
-      (resolution - 9) / std_cols
+      (resolution - 11) / std_cols
       |> round
       |> div(2)
 
@@ -283,14 +283,13 @@ defmodule Pachinko.Printer do
       |> cap("┤ ", "\n  ")
 
     mid_pad_len =
-      if n |> Integer.is_odd, do: 2, else: 3
-      |> + top_pad_len
+      if n |> Integer.is_odd, do: 1, else: 3
 
     mid =
       "0"
       |> cap(String.reverse(mid), mid)
       |> cap("    ")
-      |> cap(String.duplicate(" ", mid_pad_len), "\n")
+      |> cap(String.duplicate(" ", top_pad_len + mid_pad_len), "\n")
 
     bot_segs =
       [
