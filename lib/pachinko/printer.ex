@@ -110,7 +110,7 @@ defmodule Pachinko.Printer do
   def generate_bell_curve_axis(n) do
     p = 0.5
 
-    std_bucket =
+    std_buckets =
       n * p * (1 - p)
       |> :math.pow(0.5)
 
@@ -118,14 +118,14 @@ defmodule Pachinko.Printer do
       2 * (n + 1)
 
     std_cols =
-      resolution * std_bucket / n
+      resolution * std_buckets / n
 
     std_max =
       (resolution - 9) / std_cols
       |> round
       |> div(2)
 
-    {top, bot} =
+    {top, mid} =
       1..std_max
       |> Enum.reduce({"", ""}, fn(x, {top_acc, bot_acc}) ->
         len =
@@ -136,23 +136,44 @@ defmodule Pachinko.Printer do
         { String.ljust(top_acc, len, ?─) <> "┼", String.ljust(bot_acc, len) <> Integer.to_string(x)}
       end)
 
-    bot_pad_len =
+    mid_pad_len =
       if n |> Integer.is_odd, do: 0, else: 3
 
     top =
       "┼"
       |> cap(String.reverse(top), top)
       |> cap("σ⁻<─", "─>σ⁺")
-      |> cap("┤ ", "\n  ")
 
-    bot =
+    mid =
       "0"
-      |> cap(String.reverse(bot), bot)
+      |> cap(String.reverse(mid), mid)
       |> cap("    ")
-      |> cap(String.duplicate(" ", bot_pad_len), "\n")
+      |> cap(String.duplicate(" ", mid_pad_len), "\n")
 
+    bot_segs =
+      [
+        "n: #{n} layers",
+        "σ: #{Float.round(std_buckets, 2)} bins",
+        "total:"
+      ]
 
-    {top, bot}
+    bot_segs_len =
+      bot_segs
+      |> Enum.reduce(0, &(byte_size(&1) + &2))
+
+    bot_segs_pad_len =
+      top
+      |> String.length
+      |> - 4
+      |> - bot_segs_len
+      |> div(2)
+  
+    bot =
+      bot_segs
+      |> Enum.join(String.duplicate(" ", bot_segs_pad_len))
+      |> cap(" ")
+
+    {top |> cap("┤ ", "\n  "), mid, bot}
   end
 
   def handle_call(:print_frame, _from, printer_state = {_, _, _, _, y_overflow}) do
@@ -193,7 +214,7 @@ defmodule Pachinko.Printer do
     |> IO.puts
   end
 
-  def print_base({mouths, base}, bucket_ball, counts_map, {top_axis, bot_axis}, total_count) do
+  def print_base({mouths, base}, bucket_ball, counts_map, {top_axis, mid_axis, bot_axis}, total_count) do
     top =
       mouths
       |> slot_row(bucket_ball, "┼")
@@ -207,14 +228,14 @@ defmodule Pachinko.Printer do
         |> Integer.is_odd
       end)
       |> Tuple.to_list      
-      |> Enum.map_join(bot_axis, &print_counter_row/1)
-      # <> String.duplicate(" ", 10)
-      # <> Integer.to_string(total_count)
+      |> Enum.map_join(mid_axis, &print_counter_row/1)
 
      top
      <> mid
      <> "\n"
      <> base
+     <> bot_axis
+     <> Integer.to_string(total_count)
   end
 
   def print_counter_row(bucket_row) do
