@@ -107,75 +107,6 @@ defmodule Pachinko.Printer do
     {:ok, initial_state}
   end
 
-  def generate_bell_curve_axis(n) do
-    p = 0.5
-
-    std_buckets =
-      n * p * (1 - p)
-      |> :math.pow(0.5)
-
-    resolution =
-      2 * (n + 1)
-
-    std_cols =
-      resolution * std_buckets / n
-
-    std_max =
-      (resolution - 9) / std_cols
-      |> round
-      |> div(2)
-
-    {top, mid} =
-      1..std_max
-      |> Enum.reduce({"", ""}, fn(x, {top_acc, bot_acc}) ->
-        len =
-          x * std_cols
-          |> round
-          |> - 1
-
-        { String.ljust(top_acc, len, ?─) <> "┼", String.ljust(bot_acc, len) <> Integer.to_string(x)}
-      end)
-
-    mid_pad_len =
-      if n |> Integer.is_odd, do: 0, else: 3
-
-    top =
-      "┼"
-      |> cap(String.reverse(top), top)
-      |> cap("σ⁻<─", "─>σ⁺")
-
-    mid =
-      "0"
-      |> cap(String.reverse(mid), mid)
-      |> cap("    ")
-      |> cap(String.duplicate(" ", mid_pad_len), "\n")
-
-    bot_segs =
-      [
-        "n: #{n} layers",
-        "σ: #{Float.round(std_buckets, 2)} bins",
-        "total:"
-      ]
-
-    bot_segs_len =
-      bot_segs
-      |> Enum.reduce(0, &(byte_size(&1) + &2))
-
-    bot_segs_pad_len =
-      top
-      |> String.length
-      |> - 4
-      |> - bot_segs_len
-      |> div(2)
-  
-    bot =
-      bot_segs
-      |> Enum.join(String.duplicate(" ", bot_segs_pad_len))
-      |> cap(" ")
-
-    {top |> cap("┤ ", "\n  "), mid, bot}
-  end
-
   def handle_call(:print_frame, _from, printer_state = {_, _, _, _, y_overflow}) do
     # 800~3500 μs (~10_000 max)to process cast
     server_state =
@@ -305,6 +236,85 @@ defmodule Pachinko.Printer do
       end
 
     {[pad | slots], y_row, row_color}
+  end
+
+  def generate_bell_curve_axis(n) do
+    p = 0.5
+
+    std_buckets =
+      n * p * (1 - p)
+      |> :math.pow(0.5)
+
+    resolution =
+      2 * (n + 1)
+
+    std_cols =
+      resolution * std_buckets / n
+
+    std_max =
+      (resolution - 9) / std_cols
+      |> round
+      |> div(2)
+
+    {top, mid} =
+      1..std_max
+      |> Enum.reduce({"", ""}, fn(x, {top_acc, bot_acc}) ->
+        len =
+          x * std_cols
+          |> round
+          |> - 1
+
+        { String.ljust(top_acc, len, ?─) <> "┼", String.ljust(bot_acc, len) <> Integer.to_string(x)}
+      end)
+
+    top =
+      "┼"
+      |> cap(String.reverse(top), top)
+      |> cap("σ⁻<─", "─>σ⁺")
+
+    top_pad_len =
+      resolution
+      |> - String.length(top)
+      |> div(2)
+
+    top =
+      String.duplicate(" ", top_pad_len)
+      <> top
+      |> cap("┤ ", "\n  ")
+
+    mid_pad_len =
+      if n |> Integer.is_odd, do: 2, else: 3
+      |> + top_pad_len
+
+    mid =
+      "0"
+      |> cap(String.reverse(mid), mid)
+      |> cap("    ")
+      |> cap(String.duplicate(" ", mid_pad_len), "\n")
+
+    bot_segs =
+      [
+        "n: #{n} layers",
+        "σ: #{Float.round(std_buckets, 2)} bins",
+        "total:"
+      ]
+
+    bot_segs_len =
+      bot_segs
+      |> Enum.reduce(0, &(byte_size(&1) + &2))
+
+    bot_segs_pad_len =
+      resolution
+      |> - 4
+      |> - bot_segs_len
+      |> div(2)
+  
+    bot =
+      bot_segs
+      |> Enum.join(String.duplicate(" ", bot_segs_pad_len))
+      |> cap(" ")
+
+    {top, mid, bot}
   end
 
   def bell_curve_row(y_row, row_color, counts_map) do
