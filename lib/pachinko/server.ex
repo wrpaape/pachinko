@@ -89,7 +89,7 @@ defmodule Pachinko.Server do
 
   defp update_buckets(buckets, bucket_ball) do
     {count, full_blocks, remainder} =
-      buckets.counts[bucket_ball]
+      buckets.counts_map[bucket_ball]
 
     count = count + 1
     remainder = remainder + 1
@@ -105,7 +105,7 @@ defmodule Pachinko.Server do
     end
 
     buckets
-    |> put_in([:counts, bucket_ball], {count, full_blocks, remainder})
+    |> put_in([:counts_map, bucket_ball], {count, full_blocks, remainder})
     |> Map.update!(:total_count, &(&1 + 1))
   end
 
@@ -119,12 +119,7 @@ defmodule Pachinko.Server do
   end
 
   defp format_reply({live_balls, bucket_ball, buckets}) do
-
-    {specific_counts, general_counts} =
-      buckets
-      |> Map.pop(:counts)
-
-    {live_balls, bucket_ball, specific_counts |> Enum.sort, general_counts}
+    {live_balls, bucket_ball, buckets |> Map.update!(:counts_map, &Enum.sort/1) }
   end
 
   defp generate_buckets(max_ball_spread) do
@@ -133,7 +128,7 @@ defmodule Pachinko.Server do
     |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
     |> Enum.into(Map.new)
     |> List.wrap
-    |> List.insert_at(0, :counts)
+    |> List.insert_at(0, :counts_map)
     |> List.to_tuple
     |> List.wrap
     |> Keyword.put_new(:total_count, 0)
