@@ -1,9 +1,11 @@
 defmodule Pachinko.Server do
+  @p = 0.5 #coinflip
+
   use GenServer
 
   @moduledoc """
   Module housing the processes that track the state of the balls
-  and bucket counts
+  and bin counts
   """
 
   ########################################################################
@@ -29,9 +31,9 @@ defmodule Pachinko.Server do
   def handle_cast(:exit, final_state), do: exit(:normal)
 
   def init(max_ball_spread) do
-    empty_buckets =
+    empty_bins =
       max_ball_spread
-      |> generate_buckets
+      |> generate_bins
 
     dead_and_nil_balls =
       max_ball_spread
@@ -40,37 +42,37 @@ defmodule Pachinko.Server do
 
     initial_state =
       dead_and_nil_balls
-      |> Tuple.append(empty_buckets)
+      |> Tuple.append(empty_bins)
 
     {:ok, initial_state}
   end
 
   # all balls are live
-  # one ball drops into a bucket (dead) and is replaced by a new ball
-  def handle_cast(:update, {live_balls, _last_bucket_ball, buckets}) do
-    {live_balls, [bucket_ball]} =
+  # one ball drops into a bin (dead) and is replaced by a new ball
+  def handle_cast(:update, {live_balls, _last_bin_ball, bins}) do
+    {live_balls, [bin_ball]} =
       live_balls
       |> Enum.split(-1)
 
     next_balls =
       [0 | shift(live_balls)]
 
-    next_buckets =
-      buckets
-      |> update_buckets(bucket_ball)
+    next_bins =
+      bins
+      |> update_bins(bin_ball)
       
-    { :noreply, {next_balls, bucket_ball, next_buckets} }
+    { :noreply, {next_balls, bin_ball, next_bins} }
   end
 
   # last of dead balls are dropped, the empty list will be dropped
   # :update is casted again to retreive a reply with next_state
-  def handle_cast(:update, {[], live_balls, nil, buckets}) do
-    handle_cast(:update, {live_balls, nil, buckets})
+  def handle_cast(:update, {[], live_balls, nil, bins}) do
+    handle_cast(:update, {live_balls, nil, bins})
   end
 
   # balls are dropped into play one at a time
-  # buckets are still out of reach
-  def handle_cast(:update, {[live_ball | dead_balls], live_and_nil_balls, nil, buckets}) do
+  # bins are still out of reach
+  def handle_cast(:update, {[live_ball | dead_balls], live_and_nil_balls, nil, bins}) do
     {live_balls, nil_balls} =
       live_and_nil_balls
       |> Enum.split_while(& &1)
@@ -78,7 +80,7 @@ defmodule Pachinko.Server do
     next_balls =
       [live_ball | shift(live_balls) ++ Enum.drop(nil_balls, 1)]
 
-    { :noreply, {dead_balls, next_balls, nil, buckets} }
+    { :noreply, {dead_balls, next_balls, nil, bins} }
   end
 
   def handle_call(:state, _from, state), do: reply_state(state)
@@ -87,30 +89,30 @@ defmodule Pachinko.Server do
   #                          private helpers                           #
   ######################################################################
 
-  defp update_buckets(buckets, bucket_ball) do
-    {count, full_blocks, remainder} =
-      buckets.counts_map[bucket_ball]
+  defp update_bins(bins, bin_ball) do
+    {actual_count, expected_count, full_blocks, remainder} =
+      bins.counts[bin_ball]
 
-    count = count + 1
+    actual_count = actual_count + 1
     remainder = remainder + 1
 
     if remainder == 8 do
       remainder = 0
       full_blocks = full_blocks + 1
-      if full_blocks > buckets.max_full_blocks do
-        buckets =
-          buckets
+      if full_blocks > bins.max_full_blocks do
+        bins =
+          bins
           |> Map.put(:max_full_blocks, full_blocks)
       end
     end
 
-    buckets
-    |> put_in([:counts_map, bucket_ball], {count, full_blocks, remainder})
+    bins.counts[bucket_ball]
+    |> put_in({actual_count, expected_count, full_blocks, remainder})
     |> Map.update!(:total_count, &(&1 + 1))
   end
 
   # do not include dead_balls in reply
-  defp reply_state(state = {_live_balls, _bucket_ball, _buckets}) do 
+  defp reply_state(state = {_live_balls, _bin_ball, _bins}) do 
     {:reply, state |> format_reply, state}
   end
 
@@ -118,17 +120,17 @@ defmodule Pachinko.Server do
     {:reply, drop_state |> Tuple.delete_at(0) |> format_reply, drop_state}
   end
 
-  defp format_reply({live_balls, bucket_ball, buckets}) do
-    {live_balls, bucket_ball, buckets |> Map.update!(:counts_map, &Enum.sort/1) }
+  defp format_reply({live_balls, bin_ball, bins}) do
+    {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1) }
   end
 
-  defp generate_buckets(max_ball_spread) do
+  defp generate_bins(max_ball_spread) do
     max_ball_spread
     |> Pachinko.reflect_stagger
-    |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
+    |> Enum.map(&{&1, Tuple.duplicate(0, 4)})
     |> Enum.into(Map.new)
     |> List.wrap
-    |> List.insert_at(0, :counts_map)
+    |> List.insert_at(0, :counts)
     |> List.to_tuple
     |> List.wrap
     |> Keyword.put_new(:total_count, 0)

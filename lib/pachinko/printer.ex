@@ -31,8 +31,8 @@ defmodule Pachinko.Printer do
 # └─┴─┴─┴─┴─┘
 
 # cols        = Fetch.dim(:cols)
-# num_buckets = cols / 2 |> Float.ceil |> trunc
-# num_rows    = num_buckets - 1
+# num_bins = cols / 2 |> Float.ceil |> trunc
+# num_rows    = num_bins - 1
 # ball_pos  = 
 # len_lpad    = num_rows - row + 1
 
@@ -128,49 +128,59 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bucket_ball, %{counts_map: counts_map, total_count: total_count}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
+  def print({balls, bin_ball, %{counts: counts, total_count: total_count}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
     base =
       counter_pieces
-      |> print_base(bucket_ball, counts_map, bell_curve_axis, total_count)
+      |> print_base(bin_ball, counts, bell_curve_axis, total_count)
 
     main = 
       peg_rows
       |> Enum.zip(balls)
-      |> Enum.map_join("\n", &print_row(&1, counts_map))
+      |> Enum.map_join("\n", &print_row(&1, counts))
 
     top_pad
     <> main
     <> "\n"
     <> base
+    # counts    
     |> IO.puts
   end
 
-  def print_base({mouths, base}, bucket_ball, counts_map, {top_axis, mid_axis, bot_axis}, total_count) do
+  def print_base({mouths, base}, bin_ball, counts, {top_axis, mid_axis, bot_axis}, total_count) do
     top =
       mouths
-      |> slot_row(bucket_ball, "┼")
+      |> slot_row(bin_ball, "┼")
       |> cap("├", top_axis)
 
     mid =
-      counts_map
+      counts
       |> Enum.with_index
-      |> Enum.partition(fn({_bucket, row_index}) ->
+      |> Enum.partition(fn({_bin, row_index}) ->
         row_index
         |> Integer.is_odd
       end)
       |> Tuple.to_list      
       |> Enum.map_join(mid_axis, &print_counter_row/1)
 
+    trials =
+      Integer.to_string(total_count)
+
+    trials_pad_len =
+      4 - byte_size(trials)
+
+
      top
      <> mid
      <> "\n"
      <> base
      <> bot_axis
-     <> Integer.to_string(total_count)
+     <> String.duplicate(" ", trials_pad_len)
+     <> trials
+     <> " trials"
   end
 
-  def print_counter_row(bucket_row) do
-    bucket_row
+  def print_counter_row(bin_row) do
+    bin_row
     |> Enum.map_join(" ", fn({{_slot_pos, {count, _full_blocks, _remainder}}, _row_index}) ->
       count_str = 
       count
@@ -185,7 +195,7 @@ defmodule Pachinko.Printer do
     |> cap(IO.ANSI.green, IO.ANSI.white)
   end
 
-  def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, counts_map) do
+  def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, counts) do
 
     pachinko_row =
       slot_row(slots, ball_pos, ".")
@@ -193,7 +203,7 @@ defmodule Pachinko.Printer do
       |> cap(pad)
 
     pachinko_row
-    <> bell_curve_row(y_row, row_color, counts_map)
+    <> bell_curve_row(y_row, row_color, counts)
     <> @int_color_default
   end
 
@@ -241,7 +251,7 @@ defmodule Pachinko.Printer do
   def generate_bell_curve_axis(n) do
     p = 0.5
 
-    std_buckets =
+    std_bins =
       n * p * (1 - p)
       |> :math.pow(0.5)
 
@@ -249,7 +259,7 @@ defmodule Pachinko.Printer do
       2 * (n + 1)
 
     std_cols =
-      resolution * std_buckets / n
+      resolution * std_bins / n
 
     std_max =
       (resolution - 11) / std_cols
@@ -294,8 +304,8 @@ defmodule Pachinko.Printer do
     bot_segs =
       [
         "n: #{n} layers",
-        "σ: #{Float.round(std_buckets, 2)} bins",
-        "total:"
+        "σ: #{Float.round(std_bins, 2)} bins",
+        "N:"
       ]
 
     bot_segs_len =
@@ -304,7 +314,7 @@ defmodule Pachinko.Printer do
 
     bot_segs_pad_len =
       resolution
-      |> - 4
+      |> - 11
       |> - bot_segs_len
       |> div(2)
   
@@ -316,9 +326,9 @@ defmodule Pachinko.Printer do
     {top, mid, bot}
   end
 
-  def bell_curve_row(y_row, row_color, counts_map) do
+  def bell_curve_row(y_row, row_color, counts) do
     row =
-      counts_map
+      counts
       |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
         cond do
           full_blocks < y_row -> " "
