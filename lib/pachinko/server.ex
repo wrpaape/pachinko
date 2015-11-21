@@ -1,5 +1,5 @@
 defmodule Pachinko.Server do
-  @p 0.5 #coinflip
+  @p 0.5 # coinflip
 
   use GenServer
 
@@ -113,19 +113,19 @@ defmodule Pachinko.Server do
   end
 
   defp update_chi_squared(%{counts: counts, total_count: total_count} = bins) do
-    chi_squared =
+    chi_squared_norm =
       counts
-      |> Enum.reduce(0, fn({ pr_bin, {actual_count, _full_blocks, _remainder} }, acc) ->
+      |> Enum.reduce(0, fn({ _bin_pos, { pr_bin, {actual_count, _full_blocks, _remainder} } }, acc) ->
         bin_term =
           actual_count / total_count
           |> - pr_bin
           |> :math.pow(2)
 
         acc + bin_term / pr_bin
-      end) * total_count
+      end)
 
     bins
-    |> Map.put(:chi_squared, chi_squared)
+    |> Map.put(:chi_squared, chi_squared_norm * total_count)
   end
 
   # do not include dead_balls in reply
@@ -141,16 +141,30 @@ defmodule Pachinko.Server do
     {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1)}
   end
 
-  defp generate_bins(max_ball_spread) do
-    max_ball_spread
+  defp generate_bins(n) do
+
+    fact_map =
+      Stream.unfold({0, 1}, fn(current = {i, fact}) ->
+        next_i = i + 1
+
+        {current, {next_i, fact * next_i}}
+      end)
+      |> Enum.take(n + 1)
+      |> Enum.into(Map.new)
+      |> IO.inspect
+
+    pr_k = fn(k) ->
+      n_minus_k = n - k
+      
+      :math.pow(@p, k) * :math.pow(1 - @p, n_minus_k) * fact_map[n] / (fact_map[k] * fact_map[n_minus_k])
+    end
+
+    n
     |> Pachinko.reflect_stagger
     |> Enum.with_index
-    # |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
-    |> Enum.map(fn({bin_pos, index}) ->
-      pr_bin =
-        :math.pow(@p, index) * :math.pow(@p - 1, max_ball_spread - index)
-
-      {bin_pos, { pr_bin, {0, 0, 0} } }
+    |> Enum.map(fn({bin_pos, k}) ->
+      {bin_pos, { pr_k.(k), {0, 0, 0} } }
+      |>IO.inspect
     end)
     |> Enum.into(Map.new)
     |> List.wrap

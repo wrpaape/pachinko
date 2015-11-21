@@ -128,7 +128,7 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bin_ball, %{counts: counts, total_count: total_count}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
+  def print({balls, bin_ball, %{counts: counts, total_count: total_count, chi_squared: chi_squared}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
     base =
       counter_pieces
       |> print_base(bin_ball, counts, bell_curve_axis, total_count)
@@ -142,8 +142,9 @@ defmodule Pachinko.Printer do
     <> main
     <> "\n"
     <> base
-    # counts    
-    |> IO.puts
+    counts  
+    # chi_squared  
+    |> IO.inspect
   end
 
   def print_base({mouths, base}, bin_ball, counts, {top_axis, mid_axis, bot_axis}, total_count) do
@@ -181,7 +182,7 @@ defmodule Pachinko.Printer do
 
   def print_counter_row(bin_row) do
     bin_row
-    |> Enum.map_join(" ", fn({{_slot_pos, {actual_count, expected_count, _full_blocks, _remainder}}, _row_index}) ->
+    |> Enum.map_join(" ", fn({{_bin_pos, { _pr_bin, {actual_count, _full_blocks, _remainder} } }, _row_index}) ->
       actual_count_str = 
       actual_count
       |> Integer.to_string
