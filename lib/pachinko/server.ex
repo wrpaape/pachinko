@@ -109,10 +109,10 @@ defmodule Pachinko.Server do
     bins.counts[bin_ball]
     |> put_in({ pr_bin, {actual_count, full_blocks, remainder} })
     |> Map.update!(:total_count, &(&1 + 1))
-    |> update_chi_squared
+    |> update_stats
   end
 
-  defp update_chi_squared(%{counts: counts, total_count: total_count} = bins) do
+  defp update_stats(%{counts: counts, total_count: total_count, degrees_of_freedom: degrees_of_freedom} = bins) do
     chi_squared_norm =
       counts
       |> Enum.reduce(0, fn({ _bin_pos, { pr_bin, {actual_count, _full_blocks, _remainder} } }, acc) ->
@@ -123,9 +123,13 @@ defmodule Pachinko.Server do
 
         acc + bin_term / pr_bin
       end)
+    
+    chi_squared = 
+      chi_squared_norm * total_count
 
     bins
-    |> Map.put(:chi_squared, chi_squared_norm * total_count)
+    |> Map.put(:chi_squared, chi_squared)
+    |> Map.put(:p_value, chi_squared |> Stats.p_value(degrees_of_freedom))
   end
 
   # do not include dead_balls in reply
@@ -142,7 +146,6 @@ defmodule Pachinko.Server do
   end
 
   defp generate_bins(n) do
-
     fact_map =
       Stream.unfold({0, 1}, fn(current = {i, fact}) ->
         next_i = i + 1
@@ -151,7 +154,6 @@ defmodule Pachinko.Server do
       end)
       |> Enum.take(n + 1)
       |> Enum.into(Map.new)
-      |> IO.inspect
 
     pr_k = fn(k) ->
       n_minus_k = n - k
@@ -164,7 +166,6 @@ defmodule Pachinko.Server do
     |> Enum.with_index
     |> Enum.map(fn({bin_pos, k}) ->
       {bin_pos, { pr_k.(k), {0, 0, 0} } }
-      |>IO.inspect
     end)
     |> Enum.into(Map.new)
     |> List.wrap
@@ -173,7 +174,9 @@ defmodule Pachinko.Server do
     |> List.wrap
     |> Keyword.put_new(:total_count, 0)
     |> Keyword.put_new(:max_full_blocks, 0)
-    |> Keyword.put_new(:chi_squared, 0)
+    |> Keyword.put_new(:degrees_of_freedom, n)
+    |> Keyword.put_new(:chi_squared, "N/A")
+    |> Keyword.put_new(:p_value, "N/A")
     |> Enum.into(Map.new)
   end
 

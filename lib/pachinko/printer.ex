@@ -128,7 +128,7 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bin_ball, %{counts: counts, total_count: total_count, chi_squared: chi_squared}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
+  def print({balls, bin_ball, %{counts: counts, total_count: total_count, chi_squared: chi_squared, p_value: p_value}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
     base =
       counter_pieces
       |> print_base(bin_ball, counts, bell_curve_axis, total_count)
@@ -142,8 +142,8 @@ defmodule Pachinko.Printer do
     <> main
     <> "\n"
     <> base
-    counts  
-    # chi_squared  
+
+    p_value
     |> IO.inspect
   end
 
