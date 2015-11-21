@@ -1,6 +1,8 @@
 defmodule Pachinko.Printer do
   use GenServer
 
+  require Integer
+
   @int_color_default      IO.ANSI.normal <> IO.ANSI.white
   @int_color_ball         IO.ANSI.bright <> IO.ANSI.yellow
 
@@ -100,37 +102,28 @@ defmodule Pachinko.Printer do
 
 
     initial_state =
-      {peg_rows, counter_pieces, top_pad, y_overflow}
+      {peg_rows, counter_pieces, bell_curve_axis, top_pad, y_overflow}
 
     {:ok, initial_state}
   end
 
-  # def generate_bell_curve_axis(max_ball_spread) do
-  f = fn(max_ball_spread) ->
-    n =
-      max_ball_spread
-      |> - 1
-
+  def generate_bell_curve_axis(n) do
     p = 0.5
 
     std_bucket =
       n * p * (1 - p)
       |> :math.pow(0.5)
-      |> IO.inspect
-
-    std_cols =
-      std_bucket * 2
-      |> IO.inspect
 
     resolution =
-      2 * max_ball_spread 
-      |> IO.inspect
+      2 * (n + 1)
+
+    std_cols =
+      resolution * std_bucket / n
 
     std_max =
-      (resolution - 7) / std_cols
+      (resolution - 9) / std_cols
       |> round
       |> div(2)
-      |> IO.inspect
 
     {top, bot} =
       1..std_max
@@ -141,30 +134,34 @@ defmodule Pachinko.Printer do
           |> - 1
 
         { String.ljust(top_acc, len, ?─) <> "┼", String.ljust(bot_acc, len) <> Integer.to_string(x)}
-        |> IO.inspect
       end)
+
+    bot_pad_len =
+      if n |> Integer.is_odd, do: 0, else: 3
 
     top =
       "┼"
       |> cap(String.reverse(top), top)
       |> cap("σ⁻<─", "─>σ⁺")
+      |> cap("┤ ", "\n  ")
 
     bot =
       "0"
       |> cap(String.reverse(bot), bot)
       |> cap("    ")
+      |> cap(String.duplicate(" ", bot_pad_len), "\n")
+
 
     {top, bot}
   end
 
-  def handle_call(:print_frame, _from, printer_state = {_, _, _, y_overflow}) do
+  def handle_call(:print_frame, _from, printer_state = {_, _, _, _, y_overflow}) do
     # 800~3500 μs (~10_000 max)to process cast
     server_state =
       { _, _, %{max_full_blocks: max_full_blocks} } =
         Pachinko.Server.state
 
     if max_full_blocks >= y_overflow, do: Pachinko.Server.restart, else: Pachinko.Server.update
-    # if max_full_blocks >= y_overflow, do: :timer.sleep(:infinity), else: Pachinko.Server.update
 
     next_frame =       
       server_state
@@ -179,10 +176,10 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bucket_ball, %{counts_map: counts_map, total_count: total_count}}, {peg_rows, counter_pieces, top_pad, _y_overflow}) do
-    counters =
+  def print({balls, bucket_ball, %{counts_map: counts_map, total_count: total_count}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
+    base =
       counter_pieces
-      |> print_counters(bucket_ball, counts_map)
+      |> print_base(bucket_ball, counts_map, bell_curve_axis, total_count)
 
     main = 
       peg_rows
@@ -192,33 +189,30 @@ defmodule Pachinko.Printer do
     top_pad
     <> main
     <> "\n"
-    <> counters
-    <> "  #{total_count}"
+    <> base
     |> IO.puts
-    # IO.puts total_count
   end
 
-  def print_counters({mouths, base}, bucket_ball, counts_map) do
-    require Integer
-
-    printed_top =
+  def print_base({mouths, base}, bucket_ball, counts_map, {top_axis, bot_axis}, total_count) do
+    top =
       mouths
       |> slot_row(bucket_ball, "┼")
-      |> cap("├", "┤\n  ")
+      |> cap("├", top_axis)
 
-    printed_counts =
+    mid =
       counts_map
       |> Enum.with_index
       |> Enum.partition(fn({_bucket, row_index}) ->
         row_index
         |> Integer.is_odd
       end)
-      |> Tuple.to_list
-      |> Enum.map_join("\n", &print_counter_row/1)
+      |> Tuple.to_list      
+      |> Enum.map_join(bot_axis, &print_counter_row/1)
+      # <> String.duplicate(" ", 10)
+      # <> Integer.to_string(total_count)
 
-     printed_top
-     <> IO.ANSI.green
-     <> printed_counts
+     top
+     <> mid
      <> "\n"
      <> base
   end
@@ -236,12 +230,17 @@ defmodule Pachinko.Printer do
         _ ->        count_str
       end
     end)
+    |> cap(IO.ANSI.green, IO.ANSI.white)
   end
 
   def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, counts_map) do
-    slot_row(slots, ball_pos, ".")
-    |> cap("╱", "╲")
-    |> cap(pad)
+
+    pachinko_row =
+      slot_row(slots, ball_pos, ".")
+      |> cap("╱", "╲")
+      |> cap(pad)
+
+    pachinko_row
     <> bell_curve_row(y_row, row_color, counts_map)
     <> @int_color_default
   end
@@ -321,7 +320,7 @@ defmodule Pachinko.Printer do
   def slot_row(slots, ball_pos, token) do
     slots
     |> Enum.map_join(token, fn(slot_pos) ->
-      if slot_pos == ball_pos, do: @int_color_ball <> "☻" <> @int_color_default, else: " "
+      if slot_pos == ball_pos, do: "☻" |> cap(@int_color_ball, @int_color_default), else: " "
     end)
   end
 
