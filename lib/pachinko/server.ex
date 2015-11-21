@@ -1,5 +1,5 @@
 defmodule Pachinko.Server do
-  @p = 0.5 #coinflip
+  @p 0.5 #coinflip
 
   use GenServer
 
@@ -90,7 +90,7 @@ defmodule Pachinko.Server do
   ######################################################################
 
   defp update_bins(bins, bin_ball) do
-    {actual_count, expected_count, full_blocks, remainder} =
+    { pr_bin, {actual_count, full_blocks, remainder} } =
       bins.counts[bin_ball]
 
     actual_count = actual_count + 1
@@ -106,9 +106,26 @@ defmodule Pachinko.Server do
       end
     end
 
-    bins.counts[bucket_ball]
-    |> put_in({actual_count, expected_count, full_blocks, remainder})
+    bins.counts[bin_ball]
+    |> put_in({ pr_bin, {actual_count, full_blocks, remainder} })
     |> Map.update!(:total_count, &(&1 + 1))
+    |> update_chi_squared
+  end
+
+  defp update_chi_squared(%{counts: counts, total_count: total_count} = bins) do
+    chi_squared =
+      counts
+      |> Enum.reduce(0, fn({ pr_bin, {actual_count, _full_blocks, _remainder} }, acc) ->
+        bin_term =
+          actual_count / total_count
+          |> - pr_bin
+          |> :math.pow(2)
+
+        acc + bin_term / pr_bin
+      end) * total_count
+
+    bins
+    |> Map.put(:chi_squared, chi_squared)
   end
 
   # do not include dead_balls in reply
@@ -121,13 +138,20 @@ defmodule Pachinko.Server do
   end
 
   defp format_reply({live_balls, bin_ball, bins}) do
-    {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1) }
+    {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1)}
   end
 
   defp generate_bins(max_ball_spread) do
     max_ball_spread
     |> Pachinko.reflect_stagger
-    |> Enum.map(&{&1, Tuple.duplicate(0, 4)})
+    |> Enum.with_index
+    # |> Enum.map(&{&1, Tuple.duplicate(0, 3)})
+    |> Enum.map(fn({bin_pos, index}) ->
+      pr_bin =
+        :math.pow(@p, index) * :math.pow(@p - 1, max_ball_spread - index)
+
+      {bin_pos, { pr_bin, {0, 0, 0} } }
+    end)
     |> Enum.into(Map.new)
     |> List.wrap
     |> List.insert_at(0, :counts)
@@ -135,6 +159,7 @@ defmodule Pachinko.Server do
     |> List.wrap
     |> Keyword.put_new(:total_count, 0)
     |> Keyword.put_new(:max_full_blocks, 0)
+    |> Keyword.put_new(:chi_squared, 0)
     |> Enum.into(Map.new)
   end
 

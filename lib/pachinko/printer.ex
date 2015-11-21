@@ -181,22 +181,21 @@ defmodule Pachinko.Printer do
 
   def print_counter_row(bin_row) do
     bin_row
-    |> Enum.map_join(" ", fn({{_slot_pos, {count, _full_blocks, _remainder}}, _row_index}) ->
-      count_str = 
-      count
+    |> Enum.map_join(" ", fn({{_slot_pos, {actual_count, expected_count, _full_blocks, _remainder}}, _row_index}) ->
+      actual_count_str = 
+      actual_count
       |> Integer.to_string
 
-      case byte_size(count_str) do
-        1 -> " " <> count_str <> " "
-        2 -> " " <> count_str
-        _ ->        count_str
+      case byte_size(actual_count_str) do
+        1 -> " " <> actual_count_str <> " "
+        2 -> " " <> actual_count_str
+        _ ->        actual_count_str
       end
     end)
     |> cap(IO.ANSI.green, IO.ANSI.white)
   end
 
   def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, counts) do
-
     pachinko_row =
       slot_row(slots, ball_pos, ".")
       |> cap("╱", "╲")
@@ -329,7 +328,7 @@ defmodule Pachinko.Printer do
   def bell_curve_row(y_row, row_color, counts) do
     row =
       counts
-      |> Enum.map_join(fn({_pos, {_count, full_blocks, remainder}}) ->
+      |> Enum.map_join(fn({_pos, { _pr_bin, {_actual_count, full_blocks, remainder} } }) ->
         cond do
           full_blocks < y_row -> " "
           full_blocks > y_row -> "█"
