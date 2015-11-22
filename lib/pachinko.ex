@@ -6,7 +6,7 @@ defmodule Pachinko do
 
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
-    
+
     {:ok, _sup_pid} =
       fetch_spread_and_pad!
       |> Pachinko.Supervisor.start_link
@@ -51,5 +51,9 @@ defmodule Pachinko do
       |> - max_ball_spread
 
     { max_ball_spread, String.duplicate("\n", top_pad_len) }
+  end
+
+  def fetch_pr_right! do
+
   end
 end

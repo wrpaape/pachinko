@@ -4,7 +4,8 @@ use Mix.Config
 
 config :pachinko,
   [
-    frame_rate: 15 # 15 frames per second
+    frame_rate:     15, # 15 frames per second
+    pr_shift_right: 0.5 # probability that a ball shifts right when dropped on a peg
   ]
 
 # This configuration is loaded before any dependency and is restricted

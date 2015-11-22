@@ -1,4 +1,4 @@
-defmodule Stats do
+defmodule Pachinko.Stats do
   defp fact_stirling(n) do
     :math.pow(2 * :math.pi * n, 0.5) * :math.pow(n / :math.exp(1), n)
   end

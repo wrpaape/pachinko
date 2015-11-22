@@ -3,8 +3,13 @@ defmodule Pachinko.Printer do
 
   require Integer
 
-  @int_color_default      IO.ANSI.normal <> IO.ANSI.white
-  @int_color_ball         IO.ANSI.bright <> IO.ANSI.yellow
+  alias Pachinko.Printer.Generate
+  alias Pachinko.Server
+  alias Pachinko.Fetch
+  alias IO.ANSI
+
+  @int_color_default      ANSI.normal <> ANSI.white
+  @int_color_ball         ANSI.bright <> ANSI.yellow
 
   @moduledoc """
   Prints Pachinko state to stdio.
@@ -13,14 +18,6 @@ defmodule Pachinko.Printer do
 #   │●
 #   ▁▂▃▄▅▆▇█
 #   ●
-
-# [, ,.]
-# slots [ , , , ]
-# . . . . .
-# . . . . .
-# ├ ┼─│
-# 
-#
 #      ●    
 #     ●.       1|4  ball_pos: -1 , pegs: [0]            slots = %{-1: " ", 1: " "}
 #     .●.      2|3  ball_pos:  0 , pegs: [-1, 1]        slots = %{-2: " ", 0: " ", 2: " "}
@@ -29,21 +26,6 @@ defmodule Pachinko.Printer do
 # ├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
 # │0│0│0│0│0│   
 # └─┴─┴─┴─┴─┘
-
-# cols        = Fetch.dim(:cols)
-# num_bins = cols / 2 |> Float.ceil |> trunc
-# num_rows    = num_bins - 1
-# ball_pos  = 
-# len_lpad    = num_rows - row + 1
-
-# slots = num_pegs |> Pachinko.generate_slots(" ")
-# slots |>  Map.put(ball_pos, "●") |> Map.values |> Enum.join(".")
-#   """
-
-# %{-11 => {0, 0, 0}, -9 => {0, 5, 1}, -7 => {1, 10, 5}, -5 => {3, 12, 7},
-#    -3 => {0, 20, 0}, -1 => {5, 30, 5}, 1 => {8, 27, 3}, 3 => {8, 35, 3},
-#    5 => {5, 11, 7}, 7 => {1, 1, 1}, 9 => {0, 0, 0}, 11 => {0, 6, 1}}
-
 
   ########################################################################
   #                             external API                             #
@@ -56,7 +38,7 @@ defmodule Pachinko.Printer do
   end
 
   def main([]) do
-    fetch_frame_interval!
+    Fetch.frame_interval!
     |> print_frame
   end
 
@@ -80,8 +62,6 @@ defmodule Pachinko.Printer do
   ########################################################################
 
   def init([{max_ball_spread, top_pad}]) do
-    require Integer
-
     y_overflow =
       max_ball_spread
       |> + 1
@@ -90,15 +70,15 @@ defmodule Pachinko.Printer do
       max_ball_spread
       |> Range.new(0)
       |> Enum.with_index
-      |> Enum.map(&generate_peg_row(&1, y_overflow))
+      |> Enum.map(&Generate.peg_row(&1, y_overflow))
 
     counter_pieces = 
       max_ball_spread
-      |> generate_counter_pieces
+      |> Generate.counter_pieces
 
     bell_curve_axis =
       max_ball_spread
-      |> generate_bell_curve_axis
+      |> Generate.bell_curve_axis
 
 
     initial_state =
@@ -111,9 +91,9 @@ defmodule Pachinko.Printer do
     # 800~3500 μs (~10_000 max)to process cast
     server_state =
       { _, _, %{max_full_blocks: max_full_blocks} } =
-        Pachinko.Server.state
+        Server.state
 
-    if max_full_blocks >= y_overflow, do: Pachinko.Server.restart, else: Pachinko.Server.update
+    if max_full_blocks >= y_overflow, do: Server.restart, else: Server.update
 
     next_frame =       
       server_state
@@ -169,7 +149,6 @@ defmodule Pachinko.Printer do
     trials_pad_len =
       4 - byte_size(trials)
 
-
      top
      <> mid
      <> "\n"
@@ -193,7 +172,7 @@ defmodule Pachinko.Printer do
         _ ->        actual_count_str
       end
     end)
-    |> cap(IO.ANSI.green, IO.ANSI.white)
+    |> cap(ANSI.green, ANSI.white)
   end
 
   def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, counts) do
@@ -205,125 +184,6 @@ defmodule Pachinko.Printer do
     pachinko_row
     <> bell_curve_row(y_row, row_color, counts)
     <> @int_color_default
-  end
-
-  def generate_counter_pieces(max_ball_spread) do
-    mouths =
-      max_ball_spread
-      |> Pachinko.reflect_stagger
-
-    base =
-      "─"
-      |> List.duplicate(max_ball_spread + 1)
-      |> Enum.join("┴")
-
-    {mouths, IO.ANSI.white <> cap(base, "└", "┘")}
-# ╱
-# ├ ┼ ┼●┼ ┼ ┤  cols = 11 / 12
-# │0│0│0│0│0│   
-# └─┴─┴─┴─┴─┘
-  end
-
-  def generate_peg_row({y_row, num_pegs}, y_overflow) do
-    pad =
-      " "
-      |> String.duplicate(y_row)
-
-    slots =
-      num_pegs
-      |> Pachinko.reflect_stagger
-
-    y_ratio = y_row / y_overflow
-
-    row_color =
-      cond do
-        y_ratio > 0.85 -> IO.ANSI.bright <> IO.ANSI.magenta
-        y_ratio > 0.70 -> IO.ANSI.bright <> IO.ANSI.red
-        y_ratio > 0.55 ->                   IO.ANSI.yellow
-        y_ratio > 0.40 ->                   IO.ANSI.green  
-        y_ratio > 0.20 -> IO.ANSI.faint  <> IO.ANSI.cyan
-        true           -> IO.ANSI.faint  <> IO.ANSI.blue
-      end
-
-    {[pad | slots], y_row, row_color}
-  end
-
-  def generate_bell_curve_axis(n) do
-    p = 0.5
-
-    std_bins =
-      n * p * (1 - p)
-      |> :math.pow(0.5)
-
-    resolution =
-      2 * (n + 1)
-
-    std_cols =
-      resolution * std_bins / n
-
-    std_max =
-      (resolution - 11) / std_cols
-      |> round
-      |> div(2)
-
-    {top, mid} =
-      1..std_max
-      |> Enum.reduce({"", ""}, fn(x, {top_acc, bot_acc}) ->
-        len =
-          x * std_cols
-          |> round
-          |> - 1
-
-        { String.ljust(top_acc, len, ?─) <> "┼", String.ljust(bot_acc, len) <> Integer.to_string(x)}
-      end)
-
-    top =
-      "┼"
-      |> cap(String.reverse(top), top)
-      |> cap("σ⁻<─", "─>σ⁺")
-
-    top_pad_len =
-      resolution
-      |> - String.length(top)
-      |> div(2)
-
-    top =
-      String.duplicate(" ", top_pad_len)
-      <> top
-      |> cap("┤ ", "\n  ")
-
-    mid_pad_len =
-      if n |> Integer.is_odd, do: 1, else: 3
-
-    mid =
-      "0"
-      |> cap(String.reverse(mid), mid)
-      |> cap("    ")
-      |> cap(String.duplicate(" ", top_pad_len + mid_pad_len), "\n")
-
-    bot_segs =
-      [
-        "n: #{n} layers",
-        "σ: #{Float.round(std_bins, 2)} bins",
-        "N:"
-      ]
-
-    bot_segs_len =
-      bot_segs
-      |> Enum.reduce(0, &(byte_size(&1) + &2))
-
-    bot_segs_pad_len =
-      resolution
-      |> - 11
-      |> - bot_segs_len
-      |> div(2)
-  
-    bot =
-      bot_segs
-      |> Enum.join(String.duplicate(" ", bot_segs_pad_len))
-      |> cap(" ")
-
-    {top, mid, bot}
   end
 
   def bell_curve_row(y_row, row_color, counts) do
@@ -364,19 +224,6 @@ defmodule Pachinko.Printer do
     end)
   end
 
-  defp to_whole_microseconds(seconds_per_frame) do
-    seconds_per_frame * 1000
-    |> Float.ceil
-    |> trunc
-  end
-
-  defp fetch_frame_interval! do
-    :pachinko
-    |> Application.get_env(:frame_rate)
-    |> :math.pow(-1) 
-    |> to_whole_microseconds
-  end
-
-  defp cap(string, lcap, rcap), do: lcap <> string <> rcap
-  defp cap(string, cap),        do: cap  <> string <> cap
+  def cap(string, lcap, rcap), do: lcap <> string <> rcap
+  def cap(string, cap),        do: cap  <> string <> cap
 end

@@ -1,12 +1,17 @@
 defmodule Pachinko.Server do
-  @p 0.5 # coinflip
 
   use GenServer
+
+  alias Pachinko.Fetch
+  alias Pachinko.Stats
+  alias Pachinko.Server.Generate
 
   @moduledoc """
   Module housing the processes that track the state of the balls
   and bin counts
   """
+  @p Fetch.pr_shift_right!
+
 
   ########################################################################
   #                             external API                             #
@@ -33,12 +38,12 @@ defmodule Pachinko.Server do
   def init(max_ball_spread) do
     empty_bins =
       max_ball_spread
-      |> generate_bins
+      |> Generate.bins
 
     dead_and_nil_balls =
       max_ball_spread
       |> + 1
-      |> generate_balls
+      |> Generate.balls
 
     initial_state =
       dead_and_nil_balls
@@ -145,54 +150,20 @@ defmodule Pachinko.Server do
     {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1)}
   end
 
-  defp generate_bins(n) do
-    fact_map =
-      Stream.unfold({0, 1}, fn(current = {i, fact}) ->
-        next_i = i + 1
+  defp rand_shift do
+    rand = :rand.uniform
 
-        {current, {next_i, fact * next_i}}
-      end)
-      |> Enum.take(n + 1)
-      |> Enum.into(Map.new)
-
-    pr_k = fn(k) ->
-      n_minus_k = n - k
-      
-      :math.pow(@p, k) * :math.pow(1 - @p, n_minus_k) * fact_map[n] / (fact_map[k] * fact_map[n_minus_k])
+    cond do
+      rand > @p ->  1
+      rand < @p -> -1
+      true      -> rand_shift
     end
-
-    n
-    |> Pachinko.reflect_stagger
-    |> Enum.with_index
-    |> Enum.map(fn({bin_pos, k}) ->
-      {bin_pos, { pr_k.(k), {0, 0, 0} } }
-    end)
-    |> Enum.into(Map.new)
-    |> List.wrap
-    |> List.insert_at(0, :counts)
-    |> List.to_tuple
-    |> List.wrap
-    |> Keyword.put_new(:total_count, 0)
-    |> Keyword.put_new(:max_full_blocks, 0)
-    |> Keyword.put_new(:degrees_of_freedom, n)
-    |> Keyword.put_new(:chi_squared, "N/A")
-    |> Keyword.put_new(:p_value, "N/A")
-    |> Enum.into(Map.new)
-  end
-
-  defp generate_balls(num_balls) do
-    [0, nil]
-    |> Enum.map(&List.duplicate(&1, num_balls))
-    |> List.to_tuple
-    |> Tuple.append(nil)
   end
 
   defp shift(balls) do
     balls
     |> Enum.map(fn(pos) ->
-      [-1, 1]
-      |> Enum.random
-      |> + pos
+      pos + rand_shift
     end)
   end
 end
