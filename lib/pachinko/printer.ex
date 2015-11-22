@@ -126,9 +126,9 @@ defmodule Pachinko.Printer do
     |> IO.puts
   end
 
-  def print_base({mouths, base}, bin_ball, counts, {top_axis, bot_axis, static_stats, print_dynamic_stats}, bins) do
+  def print_base({mouths_counters, base_counters}, bin_ball, counts, {top_axis, bot_axis, static_stats, print_dynamic_stats}, bins) do
     top =
-      mouths
+      mouths_counters
       |> slot_row(bin_ball, "┼")
       |> cap("├", top_axis)
 
@@ -140,13 +140,12 @@ defmodule Pachinko.Printer do
         |> Integer.is_odd
       end)
       |> Tuple.to_list      
-      |> Enum.map_join(static_stats, &print_counter_row/1)
+      |> Enum.map_join(bot_axis, &print_counter_row/1)
 
      top
      <> mid
-     <> bot_axis
-     <> "\n"
-     <> base
+     <> static_stats
+     <> base_counters
      <> print_dynamic_stats.(bins)
   end
 

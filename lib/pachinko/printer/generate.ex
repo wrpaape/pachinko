@@ -91,8 +91,7 @@ defmodule Pachinko.Printer.Generate do
       |> div(2)
 
     top =
-      top_pad_len
-      pad
+      pad(top_pad_len)
       <> top
       |> cap("┤ ", "\n  ")
 
@@ -124,7 +123,7 @@ defmodule Pachinko.Printer.Generate do
     static_stats =
       static_stats
       |> Enum.join(pad(static_stats_pad_len))
-      |> cap(pad(bot_counters_row_offset), " ")
+      |> cap(pad(bot_counters_row_offset), " \n")
 
     dynamic_stats_pad =
       resolution_printable
@@ -132,7 +131,10 @@ defmodule Pachinko.Printer.Generate do
       |> div(2)
       |> pad
 
-    print_dynamic_stats = fn(%{total_count: total_count, chi_squared: chi_squared, p_value: p_value}) ->
+    print_dynamic_stats =
+    fn
+      %{total_count: 0} -> ""
+      %{total_count: total_count, chi_squared: chi_squared, p_value: p_value} ->
       total_count_str = 
         total_count
         |> Integer.to_string
@@ -141,10 +143,10 @@ defmodule Pachinko.Printer.Generate do
         4
         |> - byte_size(total_count_str)
         |> pad
-        |> cap("N: ", total_count_str)
+        |> cap(" N: ", total_count_str)
 
       [{"χ²: ", chi_squared}, {"p-value: ", p_value}]
-      |> Enum.map_join(dynamic_stats_pad, fn(token, stat) ->
+      |> Enum.map_join(dynamic_stats_pad, fn({token, stat}) ->
         token <> Float.to_string(stat, decimals: 6)
       end)
       |> cap(total_count_print <> dynamic_stats_pad, " ")
