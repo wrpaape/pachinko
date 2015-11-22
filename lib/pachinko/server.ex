@@ -154,8 +154,8 @@ defmodule Pachinko.Server do
     rand = :rand.uniform
 
     cond do
-      rand > @p ->  1
-      rand < @p -> -1
+      rand < @p ->  1
+      rand > @p -> -1
       true      -> rand_shift
     end
   end

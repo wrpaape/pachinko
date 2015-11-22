@@ -27,8 +27,8 @@ defmodule Pachinko.Printer.Generate do
 
   def peg_row({y_row, num_pegs}, y_overflow) do
     pad =
-      " "
-      |> String.duplicate(y_row)
+      y_row
+      |> pad
 
     slots =
       num_pegs
@@ -49,7 +49,7 @@ defmodule Pachinko.Printer.Generate do
     {[pad | slots], y_row, row_color}
   end
 
-  def bell_curve_axis(n) do
+  def axis_and_stats(n) do
     std_bins =
       n * @p * (1 - @p)
       |> :math.pow(0.5)
@@ -57,15 +57,19 @@ defmodule Pachinko.Printer.Generate do
     resolution =
       2 * (n + 1)
 
+    resolution_printable =
+      resolution
+      |> - 11
+
     std_cols =
       resolution * std_bins / n
 
     std_max =
-      (resolution - 11) / std_cols
+      resolution_printable / std_cols
       |> round
       |> div(2)
 
-    {top, mid} =
+    {top, bot} =
       1..std_max
       |> Enum.reduce({"", ""}, fn(x, {top_acc, bot_acc}) ->
         len =
@@ -87,42 +91,68 @@ defmodule Pachinko.Printer.Generate do
       |> div(2)
 
     top =
-      String.duplicate(" ", top_pad_len)
+      top_pad_len
+      pad
       <> top
       |> cap("┤ ", "\n  ")
 
-    mid_pad_len =
-      if n |> Integer.is_odd, do: 1, else: 3
+    {top_counters_row_offset, bot_counters_row_offset} =
+      if n |> Integer.is_odd, do: {1, 3}, else: {3, 1}
 
-    mid =
+    bot =
       "0"
-      |> cap(String.reverse(mid), mid)
+      |> cap(String.reverse(bot), bot)
       |> cap("    ")
-      |> cap(String.duplicate(" ", top_pad_len + mid_pad_len), "\n")
+      |> cap(pad(top_pad_len + top_counters_row_offset), "\n")
 
-    bot_segs =
+    static_stats =
       [
-        "n: #{n} layers",
-        "σ: #{Float.round(std_bins, 2)} bins",
-        "N:"
+        "df: #{n} layers",
+        "σ: #{Float.to_string(std_bins, decimals: 2)} bins",
+        "p (theory): #{Float.to_string(@p, decimals: 2)}"
       ]
 
-    bot_segs_len =
-      bot_segs
+    static_stats_len =
+      static_stats
       |> Enum.reduce(0, &(byte_size(&1) + &2))
 
-    bot_segs_pad_len =
-      resolution
-      |> - 11
-      |> - bot_segs_len
+    static_stats_pad_len =
+      resolution_printable
+      |> - static_stats_len
       |> div(2)
   
-    bot =
-      bot_segs
-      |> Enum.join(String.duplicate(" ", bot_segs_pad_len))
-      |> cap(" ")
+    static_stats =
+      static_stats
+      |> Enum.join(pad(static_stats_pad_len))
+      |> cap(pad(bot_counters_row_offset), " ")
 
-    {top, mid, bot}
+    dynamic_stats_pad =
+      resolution_printable
+      |> - 36
+      |> div(2)
+      |> pad
+
+    print_dynamic_stats = fn(%{total_count: total_count, chi_squared: chi_squared, p_value: p_value}) ->
+      total_count_str = 
+        total_count
+        |> Integer.to_string
+
+      total_count_print =
+        4
+        |> - byte_size(total_count_str)
+        |> pad
+        |> cap("N: ", total_count_str)
+
+      [{"χ²: ", chi_squared}, {"p-value: ", p_value}]
+      |> Enum.map_join(dynamic_stats_pad, fn(token, stat) ->
+        token <> Float.to_string(stat, decimals: 6)
+      end)
+      |> cap(total_count_print <> dynamic_stats_pad, " ")
+    end
+
+
+    {top, bot, static_stats, print_dynamic_stats}
   end
   
+  defp pad(pad_len), do: String.duplicate(" ", pad_len)
 end

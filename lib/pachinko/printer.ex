@@ -8,8 +8,9 @@ defmodule Pachinko.Printer do
   alias Pachinko.Fetch
   alias IO.ANSI
 
-  @int_color_default      ANSI.normal <> ANSI.white
-  @int_color_ball         ANSI.bright <> ANSI.yellow
+  @p                  Fetch.pr_shift_right!
+  @int_color_default  ANSI.normal <> ANSI.white
+  @int_color_ball     ANSI.bright <> ANSI.yellow
 
   @moduledoc """
   Prints Pachinko state to stdio.
@@ -76,13 +77,13 @@ defmodule Pachinko.Printer do
       max_ball_spread
       |> Generate.counter_pieces
 
-    bell_curve_axis =
+    axis_and_stats =
       max_ball_spread
-      |> Generate.bell_curve_axis
+      |> Generate.axis_and_stats
 
 
     initial_state =
-      {peg_rows, counter_pieces, bell_curve_axis, top_pad, y_overflow}
+      {peg_rows, counter_pieces, axis_and_stats, top_pad, y_overflow}
 
     {:ok, initial_state}
   end
@@ -108,26 +109,24 @@ defmodule Pachinko.Printer do
   #                           public helpers                           #
   ######################################################################
 
-  def print({balls, bin_ball, %{counts: counts, total_count: total_count, chi_squared: chi_squared, p_value: p_value}}, {peg_rows, counter_pieces, bell_curve_axis, top_pad, _y_overflow}) do
+  def print({balls, bin_ball, bins}, {peg_rows, counter_pieces, axis_and_stats, top_pad, _y_overflow}) do
     base =
       counter_pieces
-      |> print_base(bin_ball, counts, bell_curve_axis, total_count)
+      |> print_base(bin_ball, bins.counts, axis_and_stats, bins)
 
     main = 
       peg_rows
       |> Enum.zip(balls)
-      |> Enum.map_join("\n", &print_row(&1, counts))
+      |> Enum.map_join("\n", &print_row(&1, bins.counts))
 
     top_pad
     <> main
     <> "\n"
     <> base
-
-    p_value
-    |> IO.inspect
+    |> IO.puts
   end
 
-  def print_base({mouths, base}, bin_ball, counts, {top_axis, mid_axis, bot_axis}, total_count) do
+  def print_base({mouths, base}, bin_ball, counts, {top_axis, bot_axis, static_stats, print_dynamic_stats}, bins) do
     top =
       mouths
       |> slot_row(bin_ball, "┼")
@@ -141,22 +140,14 @@ defmodule Pachinko.Printer do
         |> Integer.is_odd
       end)
       |> Tuple.to_list      
-      |> Enum.map_join(mid_axis, &print_counter_row/1)
-
-    trials =
-      Integer.to_string(total_count)
-
-    trials_pad_len =
-      4 - byte_size(trials)
+      |> Enum.map_join(static_stats, &print_counter_row/1)
 
      top
      <> mid
+     <> bot_axis
      <> "\n"
      <> base
-     <> bot_axis
-     <> String.duplicate(" ", trials_pad_len)
-     <> trials
-     <> " trials"
+     <> print_dynamic_stats.(bins)
   end
 
   def print_counter_row(bin_row) do
