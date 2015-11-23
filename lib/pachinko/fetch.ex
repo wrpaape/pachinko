@@ -8,13 +8,17 @@ defmodule Pachinko.Fetch do
   ########################################################################
 
   def frame_intervals! do
-    frame_interval =
+    frame_interval_milli =
       :frame_rate
       |> get_env
       |> :math.pow(-1) 
-      |> to_whole_microseconds
+      |> to_whole_milliseconds
 
-    {frame_interval, Integer.to_string(frame_interval * 1000)}
+    frame_interval_micro =
+      frame_interval_milli * 1000
+      |> Integer.to_string
+
+    {frame_interval_milli, frame_interval_micro, byte_size(frame_interval_micro)}
   end
 
   # def spread_and_pad!(:test), do: {1, 0}
@@ -61,7 +65,7 @@ defmodule Pachinko.Fetch do
     |> Application.get_env(config_key)
   end
 
-  defp to_whole_microseconds(seconds_per_frame) do
+  defp to_whole_milliseconds(seconds_per_frame) do
     seconds_per_frame * 1000
     |> Float.ceil
     |> trunc

@@ -43,12 +43,27 @@ defmodule Pachinko.Printer do
     |> print_frame
   end
 
-  def print_frame(frame_intervals = {frame_interval_milli, frame_interval_micro}) do
-    {cpu_time, :ready} =
+  def print_frame(frame_intervals = {frame_interval_milli, frame_interval_micro, frame_interval_string_len}) do
+    {cpu_time, next_frame} =
       GenServer
-      |> :timer.tc(:call, [__MODULE__, :print_frame])
+      |> :timer.tc(:call, [__MODULE__, :next_frame])
 
-    "CPU time/frame interval: #{cpu_time}/#{frame_interval_micro} (μs/μs)"
+    cpu_time_string =
+      cpu_time
+      |> Integer.to_string
+
+    times_pad =
+      frame_interval_string_len
+      |> - byte_size(cpu_time_string)
+      |> pad
+
+    next_frame
+    <> "\nCPU time/frame interval: "
+    <> times_pad
+    <> cpu_time_string
+    <> "/"
+    <> frame_interval_micro
+    <> " (μs/μs)"
     |> IO.puts
 
     frame_interval_milli
@@ -90,7 +105,7 @@ defmodule Pachinko.Printer do
     {:ok, initial_state}
   end
 
-  def handle_call(:print_frame, _from, printer_state = {_, _, _, _, y_overflow}) do
+  def handle_call(:next_frame, _from, printer_state = {_, _, _, _, y_overflow}) do
     # 800~3500 μs (~10_000 max)to process cast
     server_state =
       { _, _, %{max_full_blocks: max_full_blocks} } =
@@ -102,7 +117,7 @@ defmodule Pachinko.Printer do
       server_state
       |> print(printer_state)
 
-    {:reply, :ready, printer_state}  
+    {:reply, next_frame, printer_state}  
   end
 
   def handle_call(:state, _from, state), do: {:reply, state, state}
@@ -114,21 +129,20 @@ defmodule Pachinko.Printer do
   def print({balls, bin_ball, bins}, {peg_rows, counter_pieces, axis_and_stats, top_pad, _y_overflow}) do
     base =
       counter_pieces
-      |> print_base(bin_ball, bins.counts, axis_and_stats, bins)
+      |> next_base(bin_ball, bins.counts, axis_and_stats, bins)
 
     main = 
       peg_rows
       |> Enum.zip(balls)
-      |> Enum.map_join("\n", &print_row(&1, bins.counts))
+      |> Enum.map_join("\n", &next_row(&1, bins.counts))
 
     top_pad
     <> main
     <> "\n"
     <> base
-    |> IO.puts
   end
 
-  def print_base({mouths_counters, base_counters}, bin_ball, counts, {top_axis, bot_axis, static_stats, print_dynamic_stats}, bins) do
+  def next_base({mouths_counters, base_counters}, bin_ball, counts, {top_axis, bot_axis, static_stats, next_dynamic_stats}, bins) do
     top =
       mouths_counters
       |> slot_row(bin_ball, "┼")
@@ -142,16 +156,16 @@ defmodule Pachinko.Printer do
         |> Integer.is_odd
       end)
       |> Tuple.to_list      
-      |> Enum.map_join(bot_axis, &print_counter_row/1)
+      |> Enum.map_join(bot_axis, &next_counter_row/1)
 
      top
      <> mid
      <> static_stats
      <> base_counters
-     <> print_dynamic_stats.(bins)
+     <> next_dynamic_stats.(bins)
   end
 
-  def print_counter_row(bin_row) do
+  def next_counter_row(bin_row) do
     bin_row
     |> Enum.map_join(" ", fn({{_bin_pos, { _pr_bin, {actual_count, _full_blocks, _remainder} } }, _row_index}) ->
       actual_count_str = 
@@ -167,7 +181,7 @@ defmodule Pachinko.Printer do
     |> cap(ANSI.green, ANSI.white)
   end
 
-  def print_row({ { [pad | slots], y_row, row_color }, ball_pos }, counts) do
+  def next_row({ { [pad | slots], y_row, row_color }, ball_pos }, counts) do
     pachinko_row =
       slot_row(slots, ball_pos, ".")
       |> cap("╱", "╲")
@@ -217,4 +231,6 @@ defmodule Pachinko.Printer do
 
   def cap(string, lcap, rcap), do: lcap <> string <> rcap
   def cap(string, cap),        do: cap  <> string <> cap
+
+  def pad(pad_len), do: String.duplicate(" ", pad_len)
 end

@@ -4,7 +4,7 @@ defmodule Pachinko.Printer.Generate do
 
   require Integer
 
-  import Pachinko.Printer, only: [cap: 2, cap: 3]
+  import Pachinko.Printer, only: [cap: 2, cap: 3, pad: 1]
 
   @p Fetch.pr_shift_right!
 
@@ -178,6 +178,4 @@ defmodule Pachinko.Printer.Generate do
 
     {top, bot, static_stats, print_dynamic_stats}
   end
-  
-  defp pad(pad_len), do: String.duplicate(" ", pad_len)
 end
