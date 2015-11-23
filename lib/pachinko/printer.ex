@@ -39,6 +39,8 @@ defmodule Pachinko.Printer do
   end
 
   def main([]) do
+    Pachinko.ensure_fullscreen
+    
     Fetch.frame_interval!
     |> print_frame
   end
