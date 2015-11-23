@@ -16,7 +16,9 @@ defmodule Pachinko.Fetch do
 
   # def spread_and_pad!(:test), do: {1, 0}
   def spread_and_pad! do
-    [rows, columns] = dims!
+    [rows, columns] =
+      [:rows, :columns]
+      |> Enum.map(&dim!/1)
 
     max_height =
       rows
@@ -41,27 +43,21 @@ defmodule Pachinko.Fetch do
     :pr_shift_right
     |> get_env
   end
+  
+
+  def dim!(dim), do: apply(:io, dim, []) |> fetch!
 
   ######################################################################
   #                          private helpers                           #
   ######################################################################
+  
+  defp fetch!({:ok, result}), do: result
 
   defp get_env(config_key) do
     :pachinko
     |> Application.get_env(config_key)
   end
 
-  defp fetch!({:ok, result}), do: result
-
-  defp dims! do
-    [:rows, :columns]
-    |> Enum.map(fn(dim) ->
-      :io
-      |> apply(dim, [])
-      |> fetch!
-    end)
-  end
-  
   defp to_whole_microseconds(seconds_per_frame) do
     seconds_per_frame * 1000
     |> Float.ceil

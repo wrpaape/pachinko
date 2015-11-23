@@ -38,6 +38,11 @@ defmodule Pachinko.Printer do
       |> GenServer.start_link([spread_pad], name: __MODULE__)
   end
 
+  def main(_argv) do
+    Fetch.frame_interval!
+    |> print_frame
+  end
+
   def print_frame(frame_interval) do
     {time_exec, :ready} =
       GenServer
