@@ -4,7 +4,7 @@ defmodule Pachinko.Define do
   """
   defmacro stop_callback(call_back, args \\ []) do
     quote do
-      def stop, do: apply(unquote(call_back), unquote(args))
+      def stop(:pachinko), do: apply(unquote(call_back), unquote(args))
     end
   end
 end
