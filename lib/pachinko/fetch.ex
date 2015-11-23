@@ -18,27 +18,23 @@ defmodule Pachinko.Fetch do
   def spread_and_pad! do
     [rows, columns] = dims!
 
-    if columns < 101 do
-      :toggle_fullscreen
-    else
-      max_height =
-        rows
-        |> - 6
+    max_height =
+      rows
+      |> - 6
 
-      max_ball_spread = 
-        columns
-        |> - 1
-        |> div(2)
-        |> - 2
-        |> div(2)
-        |> min(max_height)
+    max_ball_spread = 
+      columns
+      |> - 1
+      |> div(2)
+      |> - 2
+      |> div(2)
+      |> min(max_height)
 
-      top_pad_len =
-        max_height
-        |> - max_ball_spread
+    top_pad_len =
+      max_height
+      |> - max_ball_spread
 
-      { max_ball_spread, String.duplicate("\n", top_pad_len) }
-    end
+    { max_ball_spread, String.duplicate("\n", top_pad_len) }
   end
 
   def pr_shift_right! do

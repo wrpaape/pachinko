@@ -38,13 +38,6 @@ defmodule Pachinko.Printer do
       |> GenServer.start_link([spread_pad], name: __MODULE__)
   end
 
-  def main([]) do
-    Pachinko.ensure_fullscreen
-    
-    Fetch.frame_interval!
-    |> print_frame
-  end
-
   def print_frame(frame_interval) do
     {time_exec, :ready} =
       GenServer
@@ -82,7 +75,6 @@ defmodule Pachinko.Printer do
     axis_and_stats =
       max_ball_spread
       |> Generate.axis_and_stats
-
 
     initial_state =
       {peg_rows, counter_pieces, axis_and_stats, top_pad, y_overflow}
