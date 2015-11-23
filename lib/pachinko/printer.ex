@@ -39,21 +39,24 @@ defmodule Pachinko.Printer do
   end
 
   def main(_argv) do
-    Fetch.frame_interval!
+    Fetch.frame_intervals!
     |> print_frame
   end
 
-  def print_frame(frame_interval) do
-    {time_exec, :ready} =
+  def print_frame(frame_intervals = {frame_interval_milli, frame_interval_micro}) do
+    {cpu_time, :ready} =
       GenServer
       |> :timer.tc(:call, [__MODULE__, :print_frame])
 
-    frame_interval
-    |> - (time_exec / 1000)
+    "CPU time/frame interval: #{cpu_time}/#{frame_interval_micro} (μs/μs)"
+    |> IO.puts
+
+    frame_interval_milli
+    |> - (cpu_time / 1000)
     |> trunc
     |> :timer.sleep
 
-    print_frame(frame_interval)
+    print_frame(frame_intervals)
   end
 
   def state, do: __MODULE__ |> GenServer.call(:state)

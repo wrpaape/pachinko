@@ -7,11 +7,14 @@ defmodule Pachinko.Fetch do
   #                             external API                             #
   ########################################################################
 
-  def frame_interval! do
-    :frame_rate
-    |> get_env
-    |> :math.pow(-1) 
-    |> to_whole_microseconds
+  def frame_intervals! do
+    frame_interval =
+      :frame_rate
+      |> get_env
+      |> :math.pow(-1) 
+      |> to_whole_microseconds
+
+    {frame_interval, Integer.to_string(frame_interval * 1000)}
   end
 
   # def spread_and_pad!(:test), do: {1, 0}
@@ -22,7 +25,7 @@ defmodule Pachinko.Fetch do
 
     max_height =
       rows
-      |> - 6
+      |> - 7
 
     max_ball_spread = 
       columns

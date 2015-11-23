@@ -35,7 +35,7 @@ defmodule Pachinko do
 
   def reflect_stagger(max), do: -max..max |> Enum.take_every(2)
 
-  defp small_screen?, do: Fetch.dim!(:columns) < 101
+  defp small_screen?, do: Fetch.dim!(:rows) < 37 or Fetch.dim!(:columns) < 101 
 
   defp toggle_full_screen do
     '''
