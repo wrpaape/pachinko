@@ -33,7 +33,7 @@ defmodule Pachinko.Server do
   #                       GenServer implementation                       #
   ########################################################################
 
-  def handle_cast(:exit, final_state), do: exit(:normal)
+  def handle_cast(:exit, _final_state), do: exit(:normal)
 
   def init(max_ball_spread) do
     empty_bins =

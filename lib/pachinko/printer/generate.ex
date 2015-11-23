@@ -104,32 +104,44 @@ defmodule Pachinko.Printer.Generate do
       |> cap("    ")
       |> cap(pad(top_pad_len + top_counters_row_offset), "\n")
 
+      [std, pr_left, pr_right] =
+        [std_bins, 1 - @p, @p]
+        |> Enum.map(&Float.to_string(&1, decimals: 2))
+
     static_stats =
       [
         "df: #{n} layers",
-        "σ: #{Float.to_string(std_bins, decimals: 2)} bins",
-        "p (theory): #{Float.to_string(@p, decimals: 2)}"
+        "σ: #{std} bins",
+        "p(←/→): #{pr_left}/#{pr_right}"
       ]
 
     static_stats_len =
       static_stats
       |> Enum.reduce(0, &(byte_size(&1) + &2))
 
-    static_stats_pad_len =
+    static_stats_pad =
       resolution_printable
       |> - static_stats_len
       |> div(2)
+      |> pad
   
-    static_stats =
+    static_stats_aligned =
       static_stats
-      |> Enum.join(pad(static_stats_pad_len))
+      |> Enum.take(2)
+      |> Enum.map(fn(s_stat) ->
+        s_stat <> static_stats_pad
+      end)
+      |> List.insert_at(2, List.last(static_stats))
+
+    static_stats = 
+      static_stats_aligned
       |> cap(pad(bot_counters_row_offset), " \n")
 
-    dynamic_stats_pad =
-      resolution_printable
-      |> - 36
-      |> div(2)
-      |> pad
+    # dynamic_stats_pad =
+    #   resolution_printable
+    #   |> - 37
+    #   |> div(2)
+    #   |> pad
 
     print_dynamic_stats =
     fn
@@ -139,17 +151,28 @@ defmodule Pachinko.Printer.Generate do
         total_count
         |> Integer.to_string
 
-      total_count_print =
-        4
-        |> - byte_size(total_count_str)
-        |> pad
-        |> cap(" N: ", total_count_str)
+      # total_count_print =
+      #   4
+      #   |> - byte_size(total_count_str)
+      #   |> pad
+      #   |> cap(" N: ", total_count_str)
 
-      [{"χ²: ", chi_squared}, {"p-value: ", p_value}]
-      |> Enum.map_join(dynamic_stats_pad, fn({token, stat}) ->
+      [{"χ²: ", 4, chi_squared}, {"p-value: ", p_value}]
+      |> Enum.map(dynamic_stats_pad, fn({token, _token_len, stat}) ->
         token <> Float.to_string(stat, decimals: 6)
       end)
-      |> cap(total_count_print <> dynamic_stats_pad, " ")
+      |> List.insert_at(0, " N: " <> total_count_str)
+      |> Enum.zip(static_stats_aligned)
+      |> reduce(fn({d_stat, s_stat}, acc) ->
+        s_stat
+        |> byte_size
+        |> pad
+      end)
+
+      # |> cap(total_count_print <> dynamic_stats_pad, " ")
+
+      
+      
     end
 
 
