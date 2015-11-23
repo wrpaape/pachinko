@@ -81,13 +81,21 @@ defmodule Pachinko.Printer.Generate do
       |> cap(String.reverse(top), top)
       |> cap("σ⁻<─", "─>σ⁺")
 
+    top_len =
+      top
+      |> String.length
+
     top_pad_len =
       resolution
-      |> - String.length(top)
+      |> - top_len
       |> div(2)
 
+    top_pad =
+      top_pad_len
+      |> pad
+
     top =
-      pad(top_pad_len)
+      top_pad
       <> top
       |> cap("┤ ", "\n  ")
 
@@ -113,10 +121,10 @@ defmodule Pachinko.Printer.Generate do
 
     static_stats_len =
       static_stats
-      |> Enum.reduce(0, &(byte_size(&1) + &2))
+      |> Enum.reduce(0, &(String.length(&1) + &2))
 
     static_stats_pad_len =
-      resolution
+      top_len
       |> - static_stats_len
       |> div(2)
   
@@ -138,7 +146,11 @@ defmodule Pachinko.Printer.Generate do
 
     static_stats =
       static_stats_no_offset
-      |> cap(pad(bot_counters_row_offset), " \n")
+      |> cap(pad(bot_counters_row_offset + top_pad_len), " \n")
+
+    chi_squared_token = 
+      top_pad
+      <> " χ²: "
 
     print_dynamic_stats =
     fn
@@ -146,7 +158,7 @@ defmodule Pachinko.Printer.Generate do
       %{total_count: total_count, chi_squared: chi_squared, p_value: p_value} ->
 
       chi_and_p = 
-        [{" χ²: ", chi_squared}, {"p-value: ", p_value}]
+        [{chi_squared_token, chi_squared}, {"p-value: ", p_value}]
         |> Enum.map(fn({token, stat}) ->
           {token, Float.to_string(stat, decimals: 6)}
         end)
