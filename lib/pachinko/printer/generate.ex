@@ -131,7 +131,6 @@ defmodule Pachinko.Printer.Generate do
     static_stats_no_offset = 
       static_stats
       |> Enum.join(pad(static_stats_pad_len))
-      
 
     dynamic_stats_pad_lens = 
       static_stats_no_offset
