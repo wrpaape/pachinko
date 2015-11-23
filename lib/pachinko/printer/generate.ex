@@ -57,15 +57,11 @@ defmodule Pachinko.Printer.Generate do
     resolution =
       2 * (n + 1)
 
-    resolution_printable =
-      resolution
-      |> - 11
-
     std_cols =
       resolution * std_bins / n
 
     std_max =
-      resolution_printable / std_cols
+      (resolution - 11) / std_cols
       |> round
       |> div(2)
 
@@ -119,60 +115,53 @@ defmodule Pachinko.Printer.Generate do
       static_stats
       |> Enum.reduce(0, &(byte_size(&1) + &2))
 
-    static_stats_pad =
-      resolution_printable
+    static_stats_pad_len =
+      resolution
       |> - static_stats_len
       |> div(2)
-      |> pad
   
-    static_stats_aligned =
+    static_stats_no_offset = 
       static_stats
-      |> Enum.take(2)
-      |> Enum.map(fn(s_stat) ->
-        s_stat <> static_stats_pad
+      |> Enum.join(pad(static_stats_pad_len))
+      
+
+    dynamic_stats_pad_lens = 
+      static_stats_no_offset
+      |> String.split(~r{: }, trim: :true)
+      |> Enum.drop(1)
+      |> Enum.zip([7, 1])
+      |> Enum.map(fn({s_stat, next_token_len}) ->
+        s_stat
+        |> String.length
+        |> - next_token_len
       end)
-      |> List.insert_at(2, List.last(static_stats))
 
-    static_stats = 
-      static_stats_aligned
+    static_stats =
+      static_stats_no_offset
       |> cap(pad(bot_counters_row_offset), " \n")
-
-    # dynamic_stats_pad =
-    #   resolution_printable
-    #   |> - 37
-    #   |> div(2)
-    #   |> pad
 
     print_dynamic_stats =
     fn
       %{total_count: 0} -> ""
       %{total_count: total_count, chi_squared: chi_squared, p_value: p_value} ->
-      total_count_str = 
-        total_count
-        |> Integer.to_string
 
-      # total_count_print =
-      #   4
-      #   |> - byte_size(total_count_str)
-      #   |> pad
-      #   |> cap(" N: ", total_count_str)
+      chi_and_p = 
+        [{" χ²: ", chi_squared}, {"p-value: ", p_value}]
+        |> Enum.map(fn({token, stat}) ->
+          {token, Float.to_string(stat, decimals: 6)}
+        end)
+        |> Enum.zip(dynamic_stats_pad_lens)
+        |> Enum.reduce("", fn({{token, string}, pad_len}, acc) ->
+          dyn_pad = 
+            pad_len
+            |> - byte_size(string)
+            |> pad
 
-      [{"χ²: ", 4, chi_squared}, {"p-value: ", p_value}]
-      |> Enum.map(dynamic_stats_pad, fn({token, _token_len, stat}) ->
-        token <> Float.to_string(stat, decimals: 6)
-      end)
-      |> List.insert_at(0, " N: " <> total_count_str)
-      |> Enum.zip(static_stats_aligned)
-      |> reduce(fn({d_stat, s_stat}, acc) ->
-        s_stat
-        |> byte_size
-        |> pad
-      end)
-
-      # |> cap(total_count_print <> dynamic_stats_pad, " ")
-
+          acc <> token <> string <> dyn_pad
+        end)
       
-      
+      "N: "
+      |> cap(chi_and_p, Integer.to_string(total_count))
     end
 
 

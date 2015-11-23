@@ -181,12 +181,11 @@ defmodule Pachinko.Printer do
       counts
       |> Enum.map_join(fn({_pos, { _pr_bin, {_actual_count, full_blocks, remainder} } }) ->
         cond do
-          full_blocks < y_row -> " "
-          full_blocks > y_row -> "█"
-          remainder  == 0     -> " "
-          true                -> [9600 + remainder] |> List.to_string
+          full_blocks < y_row -> "  "
+          full_blocks > y_row -> "██"
+          remainder  == 0     -> "  "
+          true                -> [9600 + remainder] |> List.duplicate(2)
         end
-        |> String.duplicate(2)
       end)
     
     row_color <> row
