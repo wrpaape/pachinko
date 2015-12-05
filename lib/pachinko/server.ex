@@ -96,7 +96,9 @@ defmodule Pachinko.Server do
 
   defp update_bins(bins, bin_ball) do
     { pr_bin, {actual_count, full_blocks, remainder} } =
-      bins.counts[bin_ball]
+      bins.counts
+      |> List.keyfind(bin_ball, 0)
+      |> elem(1)
 
     actual_count = actual_count + 1
     remainder = remainder + 1
@@ -111,13 +113,16 @@ defmodule Pachinko.Server do
       end
     end
 
-    bins.counts[bin_ball]
-    |> put_in({ pr_bin, {actual_count, full_blocks, remainder} })
+    next_tup =
+    {bin_ball, { pr_bin, {actual_count, full_blocks, remainder} }}
+
+    bins
+    |> Map.update!(:counts, &List.keyreplace(&1, bin_ball, 0, next_tup))
     |> Map.update!(:total_count, &(&1 + 1))
     |> update_stats
   end
 
-  defp update_stats(%{counts: counts, total_count: total_count, degrees_of_freedom: degrees_of_freedom} = bins) do
+  defp update_stats(bins = %{counts: counts, total_count: total_count, degrees_of_freedom: degrees_of_freedom}) do
     chi_squared_norm =
       counts
       |> Enum.reduce(0, fn({ _bin_pos, { pr_bin, {actual_count, _full_blocks, _remainder} } }, acc) ->
@@ -139,16 +144,16 @@ defmodule Pachinko.Server do
 
   # do not include dead_balls in reply
   defp reply_state(state = {_live_balls, _bin_ball, _bins}) do 
-    {:reply, state |> format_reply, state}
+    {:reply, state, state}
   end
 
   defp reply_state(drop_state) do 
-    {:reply, drop_state |> Tuple.delete_at(0) |> format_reply, drop_state}
+    {:reply, drop_state |> Tuple.delete_at(0), drop_state}
   end
 
-  defp format_reply({live_balls, bin_ball, bins}) do
-    {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1)}
-  end
+  # defp format_reply({live_balls, bin_ball, bins}) do
+  #   {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1)}
+  # end
 
   defp rand_shift do
     rand = :rand.uniform

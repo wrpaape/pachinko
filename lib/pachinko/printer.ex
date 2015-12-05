@@ -67,8 +67,7 @@ defmodule Pachinko.Printer do
     |> IO.puts
 
     frame_interval_milli
-    |> - (cpu_time / 1000)
-    |> trunc
+    |> - div(cpu_time, 1000)
     |> :timer.sleep
 
     print_frame(frame_intervals)
