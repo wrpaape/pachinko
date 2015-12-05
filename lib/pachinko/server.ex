@@ -33,8 +33,6 @@ defmodule Pachinko.Server do
   #                       GenServer implementation                       #
   ########################################################################
 
-  def handle_cast(:exit, _final_state), do: exit(:normal)
-
   def init(max_ball_spread) do
     empty_bins =
       max_ball_spread
@@ -51,6 +49,8 @@ defmodule Pachinko.Server do
 
     {:ok, initial_state}
   end
+
+  def handle_cast(:exit, _final_state), do: exit(:normal)
 
   # all balls are live
   # one ball drops into a bin (dead) and is replaced by a new ball
@@ -114,7 +114,7 @@ defmodule Pachinko.Server do
     end
 
     next_tup =
-    {bin_ball, { pr_bin, {actual_count, full_blocks, remainder} }}
+    {bin_ball, { pr_bin, {actual_count, full_blocks, remainder} } }
 
     bins
     |> Map.update!(:counts, &List.keyreplace(&1, bin_ball, 0, next_tup))
@@ -150,10 +150,6 @@ defmodule Pachinko.Server do
   defp reply_state(drop_state) do 
     {:reply, drop_state |> Tuple.delete_at(0), drop_state}
   end
-
-  # defp format_reply({live_balls, bin_ball, bins}) do
-  #   {live_balls, bin_ball, bins |> Map.update!(:counts, &Enum.sort/1)}
-  # end
 
   defp rand_shift do
     rand = :rand.uniform
